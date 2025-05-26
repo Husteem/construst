@@ -9,7 +9,7 @@ const Footer = () => {
             Ahmadu Bello University, 2025
           </p>
           <p className="text-gray-500 font-roboto text-xs mt-2">
-            ConTrust - Automating construction payments with smart contracts
+            ConTrust - Revolutionizing construction payments with blockchain technology
           </p>
         </div>
       </div>
