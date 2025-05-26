@@ -5,7 +5,7 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <p className="text-gray-600 font-roboto text-sm">
-            Developed by <span className="font-semibold text-primary">Naim</span>, 
+            Developed by <span className="font-semibold text-primary">husteemah</span>, 
             Ahmadu Bello University, 2025
           </p>
           <p className="text-gray-500 font-roboto text-xs mt-2">
