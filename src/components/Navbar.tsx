@@ -31,7 +31,7 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link 
+          {/* <Link 
             to="/" 
             className="flex items-center space-x-3 font-playfair font-bold text-xl hover:text-accent transition-colors"
           >
@@ -39,7 +39,21 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
               <Hammer size={20} />
             </div>
             <span className="text-white">ConTrust</span>
+          </Link> */}
+
+          <Link 
+            to="/" 
+            className="flex items-center space-x-3 font-playfair font-bold text-xl hover:text-accent transition-colors"
+          >
+            <img 
+              src="public/contrust-logo.png.png" 
+              alt="ConTrust Logo" 
+              className="h-16 w-auto p-1"
+            />
           </Link>
+
+
+
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
