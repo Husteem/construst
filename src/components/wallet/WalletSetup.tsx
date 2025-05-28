@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Wallet, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,6 +27,7 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
   }, [userId]);
 
   const fetchWallets = async () => {
+    console.log('Fetching wallets for user:', userId);
     const { data, error } = await (supabase as any)
       .from('user_wallets')
       .select('*')
@@ -35,24 +35,54 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
 
     if (error) {
       console.error('Error fetching wallets:', error);
+      toast({
+        title: "Failed to fetch wallets",
+        description: error.message,
+        variant: "destructive",
+      });
     } else {
+      console.log('Fetched wallets:', data);
       setWallets(data || []);
     }
   };
 
+  const validateWalletAddress = (address: string, type: string): boolean => {
+    if (!address) return false;
+    
+    switch (type) {
+      case 'ethereum':
+      case 'polygon':
+        return /^0x[a-fA-F0-9]{40}$/.test(address);
+      case 'bitcoin':
+        return /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(address) || 
+               /^bc1[a-z0-9]{39,59}$/.test(address);
+      default:
+        return false;
+    }
+  };
+
   const handleAddWallet = async () => {
-    if (!newWallet.wallet_address) {
+    if (!validateWalletAddress(newWallet.wallet_address, newWallet.wallet_type)) {
       toast({
         title: "Invalid wallet address",
-        description: "Please enter a valid wallet address.",
+        description: `Please enter a valid ${newWallet.wallet_type} wallet address.`,
         variant: "destructive",
       });
       return;
     }
 
     setIsAdding(true);
+    console.log('Adding wallet:', { userId, ...newWallet });
 
     try {
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user:', user);
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
       const { error } = await (supabase as any)
         .from('user_wallets')
         .insert({
@@ -62,7 +92,10 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
           is_primary: wallets.length === 0, // First wallet is primary
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
 
       toast({
         title: "Wallet added successfully!",
@@ -71,10 +104,11 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
 
       setNewWallet({ wallet_address: '', wallet_type: 'ethereum' });
       fetchWallets();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error adding wallet:', error);
       toast({
         title: "Failed to add wallet",
-        description: "There was an error adding your wallet.",
+        description: error.message || "There was an error adding your wallet.",
         variant: "destructive",
       });
     } finally {
@@ -104,10 +138,10 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
       });
 
       fetchWallets();
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Failed to update wallet",
-        description: "There was an error updating your primary wallet.",
+        description: error.message || "There was an error updating your primary wallet.",
         variant: "destructive",
       });
     }
@@ -124,35 +158,39 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
       <CardContent>
         <div className="space-y-4">
           {/* Existing Wallets */}
-          {wallets.map((wallet) => (
-            <div
-              key={wallet.id}
-              className="flex items-center justify-between p-3 border rounded-lg"
-            >
-              <div className="flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium capitalize">{wallet.wallet_type}</span>
-                  {wallet.is_primary && (
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                      Primary
-                    </span>
-                  )}
+          {wallets.length > 0 ? (
+            wallets.map((wallet) => (
+              <div
+                key={wallet.id}
+                className="flex items-center justify-between p-3 border rounded-lg"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-medium capitalize">{wallet.wallet_type}</span>
+                    {wallet.is_primary && (
+                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                        Primary
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600 font-mono break-all">
+                    {wallet.wallet_address}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-600 font-mono break-all">
-                  {wallet.wallet_address}
-                </p>
+                {!wallet.is_primary && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPrimaryWallet(wallet.id)}
+                  >
+                    Set Primary
+                  </Button>
+                )}
               </div>
-              {!wallet.is_primary && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setPrimaryWallet(wallet.id)}
-                >
-                  Set Primary
-                </Button>
-              )}
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="text-gray-500 text-center py-4">No wallets added yet</p>
+          )}
 
           {/* Add New Wallet */}
           <div className="border-t pt-4">
@@ -182,9 +220,18 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
                   id="wallet_address"
                   value={newWallet.wallet_address}
                   onChange={(e) => setNewWallet(prev => ({ ...prev, wallet_address: e.target.value }))}
-                  placeholder="0x1234567890abcdef..."
+                  placeholder={
+                    newWallet.wallet_type === 'bitcoin' 
+                      ? "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2..." 
+                      : "0x1234567890abcdef..."
+                  }
                   className="font-mono"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  {newWallet.wallet_type === 'ethereum' && "Enter a valid Ethereum address (0x...)"}
+                  {newWallet.wallet_type === 'polygon' && "Enter a valid Polygon address (0x...)"}
+                  {newWallet.wallet_type === 'bitcoin' && "Enter a valid Bitcoin address"}
+                </p>
               </div>
 
               <Button

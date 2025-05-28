@@ -5,6 +5,7 @@ import { User } from '@/types';
 import MaterialUploadForm from '@/components/uploads/MaterialUploadForm';
 import WorkUploadForm from '@/components/uploads/WorkUploadForm';
 import WalletSetup from '@/components/wallet/WalletSetup';
+import VerificationDashboard from '@/components/verification/VerificationDashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Uploads = () => {
@@ -54,13 +55,16 @@ const Uploads = () => {
         </div>
 
         <Tabs defaultValue="wallet" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="wallet">Wallet Setup</TabsTrigger>
             {user.role === 'worker' && (
               <TabsTrigger value="work">Work Progress</TabsTrigger>
             )}
             {user.role === 'supplier' && (
               <TabsTrigger value="materials">Materials</TabsTrigger>
+            )}
+            {user.role === 'manager' && (
+              <TabsTrigger value="verify">Verification</TabsTrigger>
             )}
           </TabsList>
 
@@ -77,6 +81,12 @@ const Uploads = () => {
           {user.role === 'supplier' && (
             <TabsContent value="materials" className="mt-6">
               <MaterialUploadForm userId={user.id} onUploadComplete={handleUploadComplete} />
+            </TabsContent>
+          )}
+
+          {user.role === 'manager' && (
+            <TabsContent value="verify" className="mt-6">
+              <VerificationDashboard />
             </TabsContent>
           )}
         </Tabs>
