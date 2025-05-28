@@ -82,7 +82,7 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
         photoUrl = await uploadFile(selectedFile);
       }
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('work_uploads')
         .insert({
           worker_id: userId,

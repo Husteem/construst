@@ -83,7 +83,7 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
         photoUrl = await uploadFile(selectedFile);
       }
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('material_uploads')
         .insert({
           supplier_id: userId,

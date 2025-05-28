@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@/types';
 import MaterialUploadForm from '@/components/uploads/MaterialUploadForm';
@@ -9,18 +9,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Uploads = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  useState(() => {
+  useEffect(() => {
     const storedUser = localStorage.getItem('contrust_user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     } else {
       navigate('/login');
     }
-  });
+    setIsLoading(false);
+  }, [navigate]);
 
-  if (!user) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -29,6 +31,10 @@ const Uploads = () => {
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    return null;
   }
 
   const handleUploadComplete = () => {

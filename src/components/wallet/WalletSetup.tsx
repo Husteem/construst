@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Wallet, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,7 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newWallet, setNewWallet] = useState({
     wallet_address: '',
-    wallet_type: 'ethereum' as const,
+    wallet_type: 'ethereum' as 'ethereum' | 'bitcoin' | 'polygon',
   });
   const { toast } = useToast();
 
@@ -27,7 +28,7 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
   }, [userId]);
 
   const fetchWallets = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('user_wallets')
       .select('*')
       .eq('user_id', userId);
@@ -52,7 +53,7 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
     setIsAdding(true);
 
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('user_wallets')
         .insert({
           user_id: userId,
@@ -84,13 +85,13 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
   const setPrimaryWallet = async (walletId: string) => {
     try {
       // First, set all wallets to non-primary
-      await supabase
+      await (supabase as any)
         .from('user_wallets')
         .update({ is_primary: false })
         .eq('user_id', userId);
 
       // Then set the selected wallet as primary
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('user_wallets')
         .update({ is_primary: true })
         .eq('id', walletId);
