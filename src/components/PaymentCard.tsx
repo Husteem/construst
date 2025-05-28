@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PaymentRecord } from '@/types';
+import { formatDualCurrency } from '@/utils/currency';
 
 interface PaymentCardProps {
   payment: PaymentRecord;
@@ -41,14 +42,6 @@ const PaymentCard = ({ payment, userRole, onApprove, onReject }: PaymentCardProp
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200 animate-scale-in">
       <CardHeader className="pb-3">
@@ -73,9 +66,14 @@ const PaymentCard = ({ payment, userRole, onApprove, onReject }: PaymentCardProp
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <DollarSign size={16} className="text-primary" />
-              <span className="font-roboto font-semibold text-xl text-gray-900">
-                {formatCurrency(payment.amount)}
-              </span>
+              <div className="flex flex-col">
+                <span className="font-roboto font-semibold text-xl text-gray-900">
+                  {formatDualCurrency(payment.amount)}
+                </span>
+                <span className="text-xs text-gray-500">
+                  Rate: 1 USD = ₦1,600
+                </span>
+              </div>
             </div>
             <div className="flex items-center space-x-2 text-gray-500">
               <Calendar size={14} />

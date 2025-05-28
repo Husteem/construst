@@ -36,7 +36,7 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
             className="flex items-center space-x-3 font-playfair font-bold text-xl hover:text-accent transition-colors"
           >
             <img 
-              src="public/contrust-logo.png.png" 
+              src="/contrust-logo.png.png" 
               alt="ConTrust Logo" 
               className="h-16 w-auto p-1"
             />

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserWallet } from '@/types';
+import CurrencyConverter from './CurrencyConverter';
 
 interface WalletSetupProps {
   userId: string;
@@ -148,105 +149,109 @@ const WalletSetup = ({ userId }: WalletSetupProps) => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-playfair text-xl flex items-center space-x-2">
-          <Wallet size={20} className="text-primary" />
-          <span>Wallet Setup</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {/* Existing Wallets */}
-          {wallets.length > 0 ? (
-            wallets.map((wallet) => (
-              <div
-                key={wallet.id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-medium capitalize">{wallet.wallet_type}</span>
-                    {wallet.is_primary && (
-                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                        Primary
-                      </span>
-                    )}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-playfair text-xl flex items-center space-x-2">
+            <Wallet size={20} className="text-primary" />
+            <span>Wallet Setup</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Existing Wallets */}
+            {wallets.length > 0 ? (
+              wallets.map((wallet) => (
+                <div
+                  key={wallet.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium capitalize">{wallet.wallet_type}</span>
+                      {wallet.is_primary && (
+                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                          Primary
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 font-mono break-all">
+                      {wallet.wallet_address}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-600 font-mono break-all">
-                    {wallet.wallet_address}
+                  {!wallet.is_primary && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPrimaryWallet(wallet.id)}
+                    >
+                      Set Primary
+                    </Button>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-4">No wallets added yet</p>
+            )}
+
+            {/* Add New Wallet */}
+            <div className="border-t pt-4">
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="wallet_type">Wallet Type</Label>
+                  <Select
+                    value={newWallet.wallet_type}
+                    onValueChange={(value: 'ethereum' | 'bitcoin' | 'polygon') =>
+                      setNewWallet(prev => ({ ...prev, wallet_type: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ethereum">Ethereum (ETH)</SelectItem>
+                      <SelectItem value="polygon">Polygon (MATIC)</SelectItem>
+                      <SelectItem value="bitcoin">Bitcoin (BTC)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="wallet_address">Wallet Address</Label>
+                  <Input
+                    id="wallet_address"
+                    value={newWallet.wallet_address}
+                    onChange={(e) => setNewWallet(prev => ({ ...prev, wallet_address: e.target.value }))}
+                    placeholder={
+                      newWallet.wallet_type === 'bitcoin' 
+                        ? "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2..." 
+                        : "0x1234567890abcdef..."
+                    }
+                    className="font-mono"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {newWallet.wallet_type === 'ethereum' && "Enter a valid Ethereum address (0x...)"}
+                    {newWallet.wallet_type === 'polygon' && "Enter a valid Polygon address (0x...)"}
+                    {newWallet.wallet_type === 'bitcoin' && "Enter a valid Bitcoin address"}
                   </p>
                 </div>
-                {!wallet.is_primary && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setPrimaryWallet(wallet.id)}
-                  >
-                    Set Primary
-                  </Button>
-                )}
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-500 text-center py-4">No wallets added yet</p>
-          )}
 
-          {/* Add New Wallet */}
-          <div className="border-t pt-4">
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="wallet_type">Wallet Type</Label>
-                <Select
-                  value={newWallet.wallet_type}
-                  onValueChange={(value: 'ethereum' | 'bitcoin' | 'polygon') =>
-                    setNewWallet(prev => ({ ...prev, wallet_type: value }))
-                  }
+                <Button
+                  onClick={handleAddWallet}
+                  disabled={isAdding}
+                  className="w-full"
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ethereum">Ethereum (ETH)</SelectItem>
-                    <SelectItem value="polygon">Polygon (MATIC)</SelectItem>
-                    <SelectItem value="bitcoin">Bitcoin (BTC)</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <Plus size={16} className="mr-2" />
+                  {isAdding ? 'Adding...' : 'Add Wallet'}
+                </Button>
               </div>
-
-              <div>
-                <Label htmlFor="wallet_address">Wallet Address</Label>
-                <Input
-                  id="wallet_address"
-                  value={newWallet.wallet_address}
-                  onChange={(e) => setNewWallet(prev => ({ ...prev, wallet_address: e.target.value }))}
-                  placeholder={
-                    newWallet.wallet_type === 'bitcoin' 
-                      ? "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2..." 
-                      : "0x1234567890abcdef..."
-                  }
-                  className="font-mono"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {newWallet.wallet_type === 'ethereum' && "Enter a valid Ethereum address (0x...)"}
-                  {newWallet.wallet_type === 'polygon' && "Enter a valid Polygon address (0x...)"}
-                  {newWallet.wallet_type === 'bitcoin' && "Enter a valid Bitcoin address"}
-                </p>
-              </div>
-
-              <Button
-                onClick={handleAddWallet}
-                disabled={isAdding}
-                className="w-full"
-              >
-                <Plus size={16} className="mr-2" />
-                {isAdding ? 'Adding...' : 'Add Wallet'}
-              </Button>
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <CurrencyConverter />
+    </div>
   );
 };
 
