@@ -19,6 +19,10 @@ export interface PaymentRecord {
   approver_id?: string;
   transaction_hash?: string;
   recipient_name?: string;
+  recipient_wallet?: string;
+  transaction_status?: 'pending' | 'processing' | 'completed' | 'failed';
+  smart_contract_address?: string;
+  gas_fee?: number;
   created_at: string;
 }
 
@@ -42,4 +46,48 @@ export interface DeliveryLog {
   delivery_date: string;
   status: 'pending' | 'delivered' | 'paid';
   created_at: string;
+}
+
+export interface MaterialUpload {
+  id: string;
+  supplier_id: string;
+  material_type: string;
+  quantity: number;
+  delivery_date: string;
+  photo_url?: string;
+  description?: string;
+  gps_coordinates?: string;
+  status: 'pending' | 'verified' | 'rejected';
+  created_at: string;
+}
+
+export interface WorkUpload {
+  id: string;
+  worker_id: string;
+  work_date: string;
+  hours_worked: number;
+  photo_url?: string;
+  description: string;
+  gps_coordinates?: string;
+  status: 'pending' | 'verified' | 'rejected';
+  created_at: string;
+}
+
+export interface UserWallet {
+  id: string;
+  user_id: string;
+  wallet_address: string;
+  wallet_type: 'ethereum' | 'bitcoin' | 'polygon';
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ManagerWallet {
+  id: string;
+  manager_id: string;
+  wallet_address: string;
+  balance: number;
+  currency: 'ETH' | 'USDT' | 'USDC' | 'NGN';
+  last_updated: string;
 }

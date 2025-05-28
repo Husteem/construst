@@ -1,5 +1,5 @@
 
-import { Calendar, DollarSign } from 'lucide-react';
+import { Calendar, DollarSign, Wallet, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,19 @@ const PaymentCard = ({ payment, userRole, onApprove, onReject }: PaymentCardProp
     }
   };
 
+  const getTransactionStatusColor = (status?: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'processing':
+        return 'bg-blue-100 text-blue-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
@@ -43,9 +56,16 @@ const PaymentCard = ({ payment, userRole, onApprove, onReject }: PaymentCardProp
           <CardTitle className="text-lg font-roboto font-semibold text-gray-900">
             {payment.description}
           </CardTitle>
-          <Badge className={getStatusColor(payment.status)}>
-            {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-          </Badge>
+          <div className="flex flex-col space-y-1">
+            <Badge className={getStatusColor(payment.status)}>
+              {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+            </Badge>
+            {payment.transaction_status && (
+              <Badge className={getTransactionStatusColor(payment.transaction_status)}>
+                {payment.transaction_status}
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -70,10 +90,34 @@ const PaymentCard = ({ payment, userRole, onApprove, onReject }: PaymentCardProp
               To: {payment.recipient_name}
             </p>
           )}
+
+          {payment.recipient_wallet && (
+            <div className="flex items-center space-x-2">
+              <Wallet size={14} className="text-gray-500" />
+              <span className="text-xs text-gray-500 font-mono break-all">
+                {payment.recipient_wallet}
+              </span>
+            </div>
+          )}
           
           {payment.transaction_hash && (
-            <p className="text-xs text-gray-500 font-mono break-all">
-              Tx: {payment.transaction_hash}
+            <div className="flex items-center space-x-2">
+              <ExternalLink size={14} className="text-gray-500" />
+              <span className="text-xs text-gray-500 font-mono break-all">
+                {payment.transaction_hash}
+              </span>
+            </div>
+          )}
+
+          {payment.smart_contract_address && (
+            <p className="text-xs text-gray-500 font-mono">
+              Contract: {payment.smart_contract_address}
+            </p>
+          )}
+
+          {payment.gas_fee && (
+            <p className="text-xs text-gray-500">
+              Gas Fee: {payment.gas_fee} ETH
             </p>
           )}
 
@@ -84,7 +128,7 @@ const PaymentCard = ({ payment, userRole, onApprove, onReject }: PaymentCardProp
                 className="flex-1 bg-green-600 hover:bg-green-700"
                 size="sm"
               >
-                Approve
+                Approve & Send
               </Button>
               <Button
                 onClick={() => onReject?.(payment.id)}

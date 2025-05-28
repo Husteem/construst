@@ -1,14 +1,14 @@
 
 import { useState, useEffect } from 'react';
-import { Clock, DollarSign, Plus, History } from 'lucide-react';
+import { Clock, DollarSign, Plus, History, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { User, PaymentRecord, WorkLog } from '@/types';
 import PaymentCard from '@/components/PaymentCard';
+import { Link } from 'react-router-dom';
 
 interface WorkerDashboardProps {
   user: User;
@@ -21,12 +21,12 @@ const WorkerDashboard = ({ user }: WorkerDashboardProps) => {
   const [logForm, setLogForm] = useState({
     hours: '',
     description: '',
-    hourlyRate: '2500', // Default hourly rate in Naira
+    hourlyRate: '2500',
   });
   const { toast } = useToast();
 
   useEffect(() => {
-    // Mock data for demo
+    // Mock data for demo with enhanced wallet information
     const mockPayments: PaymentRecord[] = [
       {
         id: '1',
@@ -36,6 +36,10 @@ const WorkerDashboard = ({ user }: WorkerDashboardProps) => {
         description: 'Foundation work - Week 3',
         recipient_id: user.id,
         transaction_hash: '0x1234...abcd',
+        recipient_wallet: '0x742d35Cc6cF6A2bC1a4B0e0B0e1b0e1b0e1b0e1b',
+        transaction_status: 'completed',
+        smart_contract_address: '0xContractAddress123',
+        gas_fee: 0.0025,
         created_at: '2025-01-20T10:00:00Z',
       },
       {
@@ -45,6 +49,8 @@ const WorkerDashboard = ({ user }: WorkerDashboardProps) => {
         date: '2025-01-22',
         description: 'Roofing installation',
         recipient_id: user.id,
+        recipient_wallet: '0x742d35Cc6cF6A2bC1a4B0e0B0e1b0e1b0e1b0e1b',
+        transaction_status: 'processing',
         created_at: '2025-01-22T14:00:00Z',
       },
       {
@@ -159,6 +165,41 @@ const WorkerDashboard = ({ user }: WorkerDashboardProps) => {
           <p className="font-roboto text-gray-600 mt-2">
             Track your work hours and payment history
           </p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <Link to="/uploads">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <Upload className="text-blue-600" size={24} />
+                  </div>
+                  <div>
+                    <p className="font-roboto font-semibold text-gray-900">Upload Work Progress</p>
+                    <p className="font-roboto text-sm text-gray-600">Add photos and details of today's work</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          <Link to="/uploads">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-green-100 p-2 rounded-full">
+                    <DollarSign className="text-green-600" size={24} />
+                  </div>
+                  <div>
+                    <p className="font-roboto font-semibold text-gray-900">Setup Wallet</p>
+                    <p className="font-roboto text-sm text-gray-600">Add your crypto wallet for payments</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Stats Cards */}

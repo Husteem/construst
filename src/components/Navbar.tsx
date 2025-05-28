@@ -31,16 +31,6 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          {/* <Link 
-            to="/" 
-            className="flex items-center space-x-3 font-playfair font-bold text-xl hover:text-accent transition-colors"
-          >
-            <div className="bg-accent text-primary rounded-lg p-2">
-              <Hammer size={20} />
-            </div>
-            <span className="text-white">ConTrust</span>
-          </Link> */}
-
           <Link 
             to="/" 
             className="flex items-center space-x-3 font-playfair font-bold text-xl hover:text-accent transition-colors"
@@ -52,9 +42,6 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
             />
           </Link>
 
-
-
-
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
             <Link 
@@ -64,12 +51,20 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
               Home
             </Link>
             {user && (
-              <Link 
-                to="/dashboard" 
-                className="hover:text-accent transition-colors font-roboto text-white"
-              >
-                Dashboard
-              </Link>
+              <>
+                <Link 
+                  to="/dashboard" 
+                  className="hover:text-accent transition-colors font-roboto text-white"
+                >
+                  Dashboard
+                </Link>
+                <Link 
+                  to="/uploads" 
+                  className="hover:text-accent transition-colors font-roboto text-white"
+                >
+                  Uploads
+                </Link>
+              </>
             )}
             {user ? (
               <div className="flex items-center space-x-4">
@@ -132,13 +127,22 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
                 Home
               </Link>
               {user && (
-                <Link 
-                  to="/dashboard" 
-                  className="hover:text-accent transition-colors font-roboto text-white"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
+                <>
+                  <Link 
+                    to="/dashboard" 
+                    className="hover:text-accent transition-colors font-roboto text-white"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link 
+                    to="/uploads" 
+                    className="hover:text-accent transition-colors font-roboto text-white"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Uploads
+                  </Link>
+                </>
               )}
               {user ? (
                 <div className="flex flex-col space-y-3">

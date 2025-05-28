@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { Package, DollarSign, Plus, Truck } from 'lucide-react';
+import { Package, DollarSign, Plus, Truck, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { User, PaymentRecord, DeliveryLog } from '@/types';
 import PaymentCard from '@/components/PaymentCard';
+import { Link } from 'react-router-dom';
 
 interface SupplierDashboardProps {
   user: User;
@@ -26,7 +26,7 @@ const SupplierDashboard = ({ user }: SupplierDashboardProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Mock data for demo
+    // Mock data with enhanced wallet information
     const mockPayments: PaymentRecord[] = [
       {
         id: '1',
@@ -36,6 +36,10 @@ const SupplierDashboard = ({ user }: SupplierDashboardProps) => {
         description: 'Cement delivery - 50 bags',
         recipient_id: user.id,
         transaction_hash: '0x5678...efgh',
+        recipient_wallet: '0x742d35Cc6cF6A2bC1a4B0e0B0e1b0e1b0e1b0e1b',
+        transaction_status: 'completed',
+        smart_contract_address: '0xContract123',
+        gas_fee: 0.0035,
         created_at: '2025-01-18T12:00:00Z',
       },
       {
@@ -174,6 +178,41 @@ const SupplierDashboard = ({ user }: SupplierDashboardProps) => {
           <p className="font-roboto text-gray-600 mt-2">
             Manage your material deliveries and track payments
           </p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <Link to="/uploads">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <Upload className="text-blue-600" size={24} />
+                  </div>
+                  <div>
+                    <p className="font-roboto font-semibold text-gray-900">Upload Materials</p>
+                    <p className="font-roboto text-sm text-gray-600">Add photos and details of deliveries</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          <Link to="/uploads">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-green-100 p-2 rounded-full">
+                    <DollarSign className="text-green-600" size={24} />
+                  </div>
+                  <div>
+                    <p className="font-roboto font-semibold text-gray-900">Setup Wallet</p>
+                    <p className="font-roboto text-sm text-gray-600">Add your crypto wallet for payments</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Stats Cards */}

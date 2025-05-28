@@ -1,10 +1,10 @@
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Clock, DollarSign, Users, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, DollarSign, Users, AlertCircle, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { User, PaymentRecord } from '@/types';
+import { User, PaymentRecord, ManagerWallet } from '@/types';
 import PaymentCard from '@/components/PaymentCard';
 
 interface ManagerDashboardProps {
@@ -13,11 +13,22 @@ interface ManagerDashboardProps {
 
 const ManagerDashboard = ({ user }: ManagerDashboardProps) => {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [managerWallet, setManagerWallet] = useState<ManagerWallet | null>(null);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Mock data for demo with recipient names
+    // Mock manager wallet data
+    const mockManagerWallet: ManagerWallet = {
+      id: '1',
+      manager_id: user.id,
+      wallet_address: '0x742d35Cc6cF6A2bC1a4B0e0B0e1b0e1b0e1b0e1b',
+      balance: 2.5,
+      currency: 'ETH',
+      last_updated: new Date().toISOString(),
+    };
+
+    // Enhanced mock payments with wallet information
     const mockPayments: PaymentRecord[] = [
       {
         id: '1',
@@ -27,6 +38,8 @@ const ManagerDashboard = ({ user }: ManagerDashboardProps) => {
         description: 'Foundation work - Week 3',
         recipient_id: 'worker1',
         recipient_name: 'Ahmad Ibrahim',
+        recipient_wallet: '0x123...abc',
+        transaction_status: 'pending',
         created_at: '2025-01-25T09:00:00Z',
       },
       {
@@ -72,20 +85,23 @@ const ManagerDashboard = ({ user }: ManagerDashboardProps) => {
       },
     ];
 
+    setManagerWallet(mockManagerWallet);
     setPayments(mockPayments);
-  }, []);
+  }, [user.id]);
 
   const handleApprove = async (paymentId: string) => {
     setIsProcessing(paymentId);
 
-    // Simulate blockchain transaction
+    // Simulate smart contract approval and payment
     setTimeout(() => {
       setPayments(prev => prev.map(payment => 
         payment.id === paymentId 
           ? { 
               ...payment, 
               status: 'approved',
+              transaction_status: 'processing',
               approver_id: user.id,
+              smart_contract_address: '0xContract123...',
               transaction_hash: `0x${Math.random().toString(16).substr(2, 8)}...${Math.random().toString(16).substr(2, 4)}`
             }
           : payment
@@ -97,15 +113,18 @@ const ManagerDashboard = ({ user }: ManagerDashboardProps) => {
       setTimeout(() => {
         setPayments(prev => prev.map(payment => 
           payment.id === paymentId 
-            ? { ...payment, status: 'paid' }
+            ? { ...payment, status: 'paid', transaction_status: 'completed' }
             : payment
         ));
 
+        // Update manager wallet balance (simulate deduction)
+        setManagerWallet(prev => prev ? { ...prev, balance: prev.balance - 0.1 } : null);
+
         toast({
-          title: "Payment processed!",
-          description: "Smart contract executed and payment released successfully.",
+          title: "Payment completed!",
+          description: "Smart contract executed and funds transferred successfully.",
         });
-      }, 2000);
+      }, 3000);
 
       toast({
         title: "Payment approved!",
@@ -160,6 +179,36 @@ const ManagerDashboard = ({ user }: ManagerDashboardProps) => {
             Review and approve payment requests from workers and suppliers
           </p>
         </div>
+
+        {/* Wallet Balance Card */}
+        {managerWallet && (
+          <Card className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <CardHeader>
+              <CardTitle className="font-playfair text-xl text-blue-900 flex items-center space-x-2">
+                <Wallet size={20} />
+                <span>Project Wallet Balance</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-roboto text-3xl font-bold text-blue-900">
+                    {managerWallet.balance.toFixed(4)} {managerWallet.currency}
+                  </p>
+                  <p className="font-roboto text-sm text-blue-700 font-mono">
+                    {managerWallet.wallet_address}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-roboto text-sm text-blue-600">Last Updated</p>
+                  <p className="font-roboto text-sm text-blue-800">
+                    {new Date(managerWallet.last_updated).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -276,17 +325,27 @@ const ManagerDashboard = ({ user }: ManagerDashboardProps) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-roboto text-gray-700">
+            <p className="font-roboto text-gray-700 mb-4">
               Payments are automatically processed through smart contracts on the Ethereum blockchain. 
-              Once approved, funds are released instantly and securely to recipients.
+              Once approved, funds are released instantly and securely to recipients' registered wallets.
             </p>
-            <div className="mt-4 p-3 bg-white rounded-lg border">
-              <p className="font-roboto text-sm text-gray-600">
-                <strong>Contract Address:</strong> 0x742d35Cc6cF6A2bC1a4B0e0B0e1b0e1b0e1b0e1b (Simulated)
-              </p>
-              <p className="font-roboto text-sm text-gray-600 mt-1">
-                <strong>Network:</strong> Ethereum Mainnet (Simulated for demo)
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-3 bg-white rounded-lg border">
+                <p className="font-roboto text-sm text-gray-600">
+                  <strong>Contract Address:</strong> 
+                </p>
+                <p className="font-roboto text-xs font-mono text-gray-800 break-all">
+                  0x742d35Cc6cF6A2bC1a4B0e0B0e1b0e1b0e1b0e1b
+                </p>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <p className="font-roboto text-sm text-gray-600">
+                  <strong>Network:</strong> Ethereum Mainnet
+                </p>
+                <p className="font-roboto text-sm text-gray-600">
+                  <strong>Gas Fees:</strong> Auto-calculated
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
