@@ -9,17 +9,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 
 interface AuthProps {
   isLogin?: boolean;
+}
+
+interface InvitationData {
+  id: string;
+  invitation_code: string;
+  role: UserRole;
+  email?: string;
+  project_name?: string;
+  admin_id: string;
 }
 
 const Auth = ({ isLogin = false }: AuthProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchParams] = useSearchParams();
-  const [invitationData, setInvitationData] = useState<any>(null);
+  const [invitationData, setInvitationData] = useState<InvitationData | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -41,15 +49,29 @@ const Auth = ({ isLogin = false }: AuthProps) => {
 
   const validateInvitation = async (code: string) => {
     try {
-      const { data, error } = await supabase
-        .from('invitations')
-        .select('*')
-        .eq('invitation_code', code)
-        .eq('status', 'pending')
-        .gt('expires_at', new Date().toISOString())
-        .single();
+      // Mock invitation validation for now
+      const mockInvitations = [
+        {
+          id: '1',
+          invitation_code: 'INV-ABC123',
+          role: 'worker' as UserRole,
+          email: 'worker@example.com',
+          project_name: 'Building Construction Phase 1',
+          admin_id: 'admin1',
+        },
+        {
+          id: '2',
+          invitation_code: 'INV-DEF456',
+          role: 'supplier' as UserRole,
+          email: 'supplier@example.com',
+          project_name: 'Road Infrastructure',
+          admin_id: 'admin1',
+        }
+      ];
 
-      if (error) {
+      const invitation = mockInvitations.find(inv => inv.invitation_code === code);
+      
+      if (!invitation) {
         toast({
           title: "Invalid Invitation",
           description: "This invitation code is invalid or has expired.",
@@ -58,16 +80,16 @@ const Auth = ({ isLogin = false }: AuthProps) => {
         return;
       }
 
-      setInvitationData(data);
+      setInvitationData(invitation);
       setFormData(prev => ({
         ...prev,
-        role: data.role,
-        email: data.email || prev.email,
+        role: invitation.role,
+        email: invitation.email || prev.email,
       }));
 
       toast({
         title: "Invitation Found",
-        description: `You're invited to join as a ${data.role}${data.project_name ? ` for ${data.project_name}` : ''}`,
+        description: `You're invited to join as a ${invitation.role}${invitation.project_name ? ` for ${invitation.project_name}` : ''}`,
       });
     } catch (error: any) {
       console.error('Invitation validation error:', error);
@@ -109,24 +131,8 @@ const Auth = ({ isLogin = false }: AuthProps) => {
             created_at: new Date().toISOString(),
           };
 
-          // Mark invitation as used
-          await supabase
-            .from('invitations')
-            .update({ 
-              status: 'used', 
-              used_at: new Date().toISOString(),
-              used_by: mockUser.id 
-            })
-            .eq('id', invitationData.id);
-
-          // Create user assignment
-          await supabase
-            .from('user_assignments')
-            .insert({
-              admin_id: invitationData.admin_id,
-              user_id: mockUser.id,
-              project_name: invitationData.project_name,
-            });
+          // Mock marking invitation as used and creating user assignment
+          console.log('Mock: Marking invitation as used and creating user assignment');
 
           localStorage.setItem('contrust_user', JSON.stringify(mockUser));
 
@@ -223,7 +229,7 @@ const Auth = ({ isLogin = false }: AuthProps) => {
                   className="pl-10"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  disabled={invitationData?.email}
+                  disabled={!!invitationData?.email}
                   required
                 />
               </div>
