@@ -9,16 +9,92 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      invitations: {
+        Row: {
+          admin_id: string
+          created_at: string
+          email: string | null
+          expires_at: string
+          id: string
+          invitation_code: string
+          project_name: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          status: Database["public"]["Enums"]["invitation_status"]
+          updated_at: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          email?: string | null
+          expires_at: string
+          id?: string
+          invitation_code: string
+          project_name?: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          status?: Database["public"]["Enums"]["invitation_status"]
+          updated_at?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          invitation_code?: string
+          project_name?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          status?: Database["public"]["Enums"]["invitation_status"]
+          updated_at?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: []
+      }
+      user_assignments: {
+        Row: {
+          admin_id: string
+          assigned_at: string
+          id: string
+          project_name: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_id: string
+          assigned_at?: string
+          id?: string
+          project_name?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_id?: string
+          assigned_at?: string
+          id?: string
+          project_name?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_invitation_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_invitation_valid: {
+        Args: { invitation_code: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      invitation_status: "pending" | "used" | "expired" | "revoked"
+      user_role: "worker" | "supplier" | "manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +209,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      invitation_status: ["pending", "used", "expired", "revoked"],
+      user_role: ["worker", "supplier", "manager"],
+    },
   },
 } as const

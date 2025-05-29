@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Users, UserCheck, Package } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AssignedUser {
   id: string;
@@ -31,49 +32,71 @@ const UserManagement = () => {
 
   const fetchAssignedUsers = async () => {
     try {
-      // Mock data for demonstration since schema is not yet updated
-      const sampleUsers: AssignedUser[] = [
-        {
-          id: '1',
-          user_id: 'user1',
-          project_name: 'Building Construction Phase 1',
-          assigned_at: new Date().toISOString(),
-          name: 'John Doe',
-          email: 'john.doe@example.com',
-          role: 'worker',
-          status: 'active',
-        },
-        {
-          id: '2',
-          user_id: 'user2',
-          project_name: 'Road Infrastructure',
-          assigned_at: new Date().toISOString(),
-          name: 'Jane Smith',
-          email: 'jane.smith@example.com',
-          role: 'supplier',
-          status: 'active',
-        },
-        {
-          id: '3',
-          user_id: 'user3',
-          project_name: 'Building Construction Phase 1',
-          assigned_at: new Date().toISOString(),
-          name: 'Mike Johnson',
-          email: 'mike.johnson@example.com',
-          role: 'worker',
-          status: 'active',
-        },
-      ];
-      
-      setAssignedUsers(sampleUsers);
-      
+      // Fetch user assignments from database
+      const { data: assignments, error } = await supabase
+        .from('user_assignments')
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching user assignments:', error);
+        // Fall back to mock data for now since we don't have user profiles table yet
+        const sampleUsers: AssignedUser[] = [
+          {
+            id: '1',
+            user_id: 'user1',
+            project_name: 'Building Construction Phase 1',
+            assigned_at: new Date().toISOString(),
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+            role: 'worker',
+            status: 'active',
+          },
+          {
+            id: '2',
+            user_id: 'user2',
+            project_name: 'Road Infrastructure',
+            assigned_at: new Date().toISOString(),
+            name: 'Jane Smith',
+            email: 'jane.smith@example.com',
+            role: 'supplier',
+            status: 'active',
+          },
+          {
+            id: '3',
+            user_id: 'user3',
+            project_name: 'Building Construction Phase 1',
+            assigned_at: new Date().toISOString(),
+            name: 'Mike Johnson',
+            email: 'mike.johnson@example.com',
+            role: 'worker',
+            status: 'active',
+          },
+        ];
+        
+        setAssignedUsers(sampleUsers);
+        setStats({
+          totalUsers: sampleUsers.length,
+          activeWorkers: sampleUsers.filter(u => u.role === 'worker').length,
+          activeSuppliers: sampleUsers.filter(u => u.role === 'supplier').length,
+        });
+        return;
+      }
+
+      // For now, show empty state since we need to implement user profiles
+      setAssignedUsers([]);
       setStats({
-        totalUsers: sampleUsers.length,
-        activeWorkers: sampleUsers.filter(u => u.role === 'worker').length,
-        activeSuppliers: sampleUsers.filter(u => u.role === 'supplier').length,
+        totalUsers: 0,
+        activeWorkers: 0,
+        activeSuppliers: 0,
       });
     } catch (error: any) {
       console.error('Error fetching assigned users:', error);
+      setAssignedUsers([]);
+      setStats({
+        totalUsers: 0,
+        activeWorkers: 0,
+        activeSuppliers: 0,
+      });
     } finally {
       setIsLoading(false);
     }

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthProps {
   isLogin?: boolean;
@@ -49,29 +50,15 @@ const Auth = ({ isLogin = false }: AuthProps) => {
 
   const validateInvitation = async (code: string) => {
     try {
-      // Mock invitation validation for now
-      const mockInvitations = [
-        {
-          id: '1',
-          invitation_code: 'INV-ABC123',
-          role: 'worker' as UserRole,
-          email: 'worker@example.com',
-          project_name: 'Building Construction Phase 1',
-          admin_id: 'admin1',
-        },
-        {
-          id: '2',
-          invitation_code: 'INV-DEF456',
-          role: 'supplier' as UserRole,
-          email: 'supplier@example.com',
-          project_name: 'Road Infrastructure',
-          admin_id: 'admin1',
-        }
-      ];
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('*')
+        .eq('invitation_code', code)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
+        .single();
 
-      const invitation = mockInvitations.find(inv => inv.invitation_code === code);
-      
-      if (!invitation) {
+      if (error || !data) {
         toast({
           title: "Invalid Invitation",
           description: "This invitation code is invalid or has expired.",
@@ -80,19 +67,24 @@ const Auth = ({ isLogin = false }: AuthProps) => {
         return;
       }
 
-      setInvitationData(invitation);
+      setInvitationData(data);
       setFormData(prev => ({
         ...prev,
-        role: invitation.role,
-        email: invitation.email || prev.email,
+        role: data.role,
+        email: data.email || prev.email,
       }));
 
       toast({
         title: "Invitation Found",
-        description: `You're invited to join as a ${invitation.role}${invitation.project_name ? ` for ${invitation.project_name}` : ''}`,
+        description: `You're invited to join as a ${data.role}${data.project_name ? ` for ${data.project_name}` : ''}`,
       });
     } catch (error: any) {
       console.error('Invitation validation error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to validate invitation",
+        variant: "destructive",
+      });
     }
   };
 
@@ -102,16 +94,13 @@ const Auth = ({ isLogin = false }: AuthProps) => {
 
     try {
       if (isLogin) {
-        // Handle login
-        const mockUser = {
-          id: '1',
+        // Handle login with Supabase
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
-          name: 'Test User',
-          role: 'manager' as UserRole,
-          created_at: new Date().toISOString(),
-        };
+          password: formData.password,
+        });
 
-        localStorage.setItem('contrust_user', JSON.stringify(mockUser));
+        if (error) throw error;
 
         toast({
           title: "Welcome back!",
@@ -120,41 +109,56 @@ const Auth = ({ isLogin = false }: AuthProps) => {
 
         navigate('/dashboard');
       } else {
-        // Handle registration
-        if (formData.invitation_code && invitationData) {
-          // Registration with invitation
-          const mockUser = {
-            id: Math.random().toString(36).substr(2, 9),
-            email: formData.email,
-            name: formData.name,
-            role: invitationData.role,
-            created_at: new Date().toISOString(),
-          };
+        // Handle registration with Supabase
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              name: formData.name,
+              role: invitationData ? invitationData.role : formData.role,
+            }
+          }
+        });
 
-          // Mock marking invitation as used and creating user assignment
-          console.log('Mock: Marking invitation as used and creating user assignment');
+        if (error) throw error;
 
-          localStorage.setItem('contrust_user', JSON.stringify(mockUser));
+        // If registration with invitation, mark invitation as used and create user assignment
+        if (formData.invitation_code && invitationData && data.user) {
+          const { error: invitationError } = await supabase
+            .from('invitations')
+            .update({ 
+              status: 'used', 
+              used_at: new Date().toISOString(),
+              used_by: data.user.id 
+            })
+            .eq('id', invitationData.id);
+
+          if (invitationError) {
+            console.error('Error updating invitation:', invitationError);
+          }
+
+          // Create user assignment
+          const { error: assignmentError } = await supabase
+            .from('user_assignments')
+            .insert({
+              admin_id: invitationData.admin_id,
+              user_id: data.user.id,
+              project_name: invitationData.project_name,
+            });
+
+          if (assignmentError) {
+            console.error('Error creating user assignment:', assignmentError);
+          }
 
           toast({
             title: "Registration Successful!",
-            description: `Welcome to ConTrust! You've joined as a ${mockUser.role}.`,
+            description: `Welcome to ConTrust! You've joined as a ${invitationData.role}.`,
           });
         } else {
-          // Regular registration (admin)
-          const mockUser = {
-            id: Math.random().toString(36).substr(2, 9),
-            email: formData.email,
-            name: formData.name,
-            role: formData.role || 'manager',
-            created_at: new Date().toISOString(),
-          };
-
-          localStorage.setItem('contrust_user', JSON.stringify(mockUser));
-
           toast({
             title: "Account created successfully!",
-            description: "Your ConTrust account has been created.",
+            description: "Please check your email to verify your account.",
           });
         }
 
