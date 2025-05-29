@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthProps {
   isLogin?: boolean;
@@ -17,45 +18,151 @@ interface AuthProps {
 const Auth = ({ isLogin = false }: AuthProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [invitationData, setInvitationData] = useState<any>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     name: '',
     role: '' as UserRole,
+    invitation_code: '',
   });
 
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  useEffect(() => {
+    const invitationCode = searchParams.get('invitation');
+    if (invitationCode && !isLogin) {
+      setFormData(prev => ({ ...prev, invitation_code: invitationCode }));
+      validateInvitation(invitationCode);
+    }
+  }, [searchParams, isLogin]);
+
+  const validateInvitation = async (code: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('*')
+        .eq('invitation_code', code)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (error) {
+        toast({
+          title: "Invalid Invitation",
+          description: "This invitation code is invalid or has expired.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setInvitationData(data);
+      setFormData(prev => ({
+        ...prev,
+        role: data.role,
+        email: data.email || prev.email,
+      }));
+
+      toast({
+        title: "Invitation Found",
+        description: `You're invited to join as a ${data.role}${data.project_name ? ` for ${data.project_name}` : ''}`,
+      });
+    } catch (error: any) {
+      console.error('Invitation validation error:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Mock successful authentication
-      const mockUser = {
-        id: '1',
-        email: formData.email,
-        name: formData.name || 'Test User',
-        role: formData.role || 'worker',
-        created_at: new Date().toISOString(),
-      };
+    try {
+      if (isLogin) {
+        // Handle login
+        const mockUser = {
+          id: '1',
+          email: formData.email,
+          name: 'Test User',
+          role: 'manager' as UserRole,
+          created_at: new Date().toISOString(),
+        };
 
-      // Store user in localStorage for demo
-      localStorage.setItem('contrust_user', JSON.stringify(mockUser));
+        localStorage.setItem('contrust_user', JSON.stringify(mockUser));
 
+        toast({
+          title: "Welcome back!",
+          description: "You have been logged in to ConTrust.",
+        });
+
+        navigate('/dashboard');
+      } else {
+        // Handle registration
+        if (formData.invitation_code && invitationData) {
+          // Registration with invitation
+          const mockUser = {
+            id: Math.random().toString(36).substr(2, 9),
+            email: formData.email,
+            name: formData.name,
+            role: invitationData.role,
+            created_at: new Date().toISOString(),
+          };
+
+          // Mark invitation as used
+          await supabase
+            .from('invitations')
+            .update({ 
+              status: 'used', 
+              used_at: new Date().toISOString(),
+              used_by: mockUser.id 
+            })
+            .eq('id', invitationData.id);
+
+          // Create user assignment
+          await supabase
+            .from('user_assignments')
+            .insert({
+              admin_id: invitationData.admin_id,
+              user_id: mockUser.id,
+              project_name: invitationData.project_name,
+            });
+
+          localStorage.setItem('contrust_user', JSON.stringify(mockUser));
+
+          toast({
+            title: "Registration Successful!",
+            description: `Welcome to ConTrust! You've joined as a ${mockUser.role}.`,
+          });
+        } else {
+          // Regular registration (admin)
+          const mockUser = {
+            id: Math.random().toString(36).substr(2, 9),
+            email: formData.email,
+            name: formData.name,
+            role: formData.role || 'manager',
+            created_at: new Date().toISOString(),
+          };
+
+          localStorage.setItem('contrust_user', JSON.stringify(mockUser));
+
+          toast({
+            title: "Account created successfully!",
+            description: "Your ConTrust account has been created.",
+          });
+        }
+
+        navigate('/dashboard');
+      }
+    } catch (error: any) {
       toast({
-        title: isLogin ? "Welcome back!" : "Account created successfully!",
-        description: isLogin 
-          ? "You have been logged in to ConTrust." 
-          : "Your ConTrust account has been created.",
+        title: "Error",
+        description: error.message || "An error occurred during authentication",
+        variant: "destructive",
       });
-
-      navigate('/dashboard');
-    }, 1500);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -75,7 +182,9 @@ const Auth = ({ isLogin = false }: AuthProps) => {
           <p className="font-roboto text-gray-600 mt-2">
             {isLogin 
               ? 'Sign in to your ConTrust account' 
-              : 'Join ConTrust for secure construction payments'
+              : invitationData 
+                ? `Join as ${invitationData.role}${invitationData.project_name ? ` for ${invitationData.project_name}` : ''}`
+                : 'Join ConTrust for secure construction payments'
             }
           </p>
         </CardHeader>
@@ -114,6 +223,7 @@ const Auth = ({ isLogin = false }: AuthProps) => {
                   className="pl-10"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
+                  disabled={invitationData?.email}
                   required
                 />
               </div>
@@ -144,7 +254,7 @@ const Auth = ({ isLogin = false }: AuthProps) => {
               </div>
             </div>
 
-            {!isLogin && (
+            {!isLogin && !invitationData && (
               <div className="space-y-2">
                 <Label htmlFor="role" className="font-roboto font-medium">
                   Role
@@ -162,6 +272,17 @@ const Auth = ({ isLogin = false }: AuthProps) => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+            )}
+
+            {!isLogin && formData.invitation_code && (
+              <div className="space-y-2">
+                <Label className="font-roboto font-medium">Invitation Code</Label>
+                <Input
+                  value={formData.invitation_code}
+                  disabled
+                  className="bg-gray-100"
+                />
               </div>
             )}
 
