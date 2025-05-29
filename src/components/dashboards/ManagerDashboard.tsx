@@ -1,354 +1,156 @@
 
-import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Clock, DollarSign, Users, AlertCircle, Wallet } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { User, PaymentRecord, ManagerWallet } from '@/types';
-import PaymentCard from '@/components/PaymentCard';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Users, Package, CheckCircle, DollarSign, UserPlus, Settings } from 'lucide-react';
+import { User } from '@/types';
+import { formatCurrency } from '@/utils/currency';
+import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
+import VerificationDashboard from '@/components/verification/VerificationDashboard';
+import InvitationManager from '@/components/invitations/InvitationManager';
+import UserManagement from '@/components/users/UserManagement';
 
 interface ManagerDashboardProps {
   user: User;
 }
 
 const ManagerDashboard = ({ user }: ManagerDashboardProps) => {
-  const [payments, setPayments] = useState<PaymentRecord[]>([]);
-  const [managerWallet, setManagerWallet] = useState<ManagerWallet | null>(null);
-  const [isProcessing, setIsProcessing] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [stats] = useState({
+    totalWorkersPaid: 42,
+    materialsDelivered: 156,
+    projectsCompleted: 8,
+    totalSpent: 15750000,
+    pendingApprovals: 5,
+    activeTeamMembers: 23,
+  });
 
-  useEffect(() => {
-    // Mock manager wallet data
-    const mockManagerWallet: ManagerWallet = {
-      id: '1',
-      manager_id: user.id,
-      wallet_address: '0x742d35Cc6cF6A2bC1a4B0e0B0e1b0e1b0e1b0e1b',
-      balance: 2.5,
-      currency: 'ETH',
-      last_updated: new Date().toISOString(),
-    };
-
-    // Enhanced mock payments with wallet information
-    const mockPayments: PaymentRecord[] = [
-      {
-        id: '1',
-        amount: 25000,
-        status: 'pending',
-        date: '2025-01-25',
-        description: 'Foundation work - Week 3',
-        recipient_id: 'worker1',
-        recipient_name: 'Ahmad Ibrahim',
-        recipient_wallet: '0x123...abc',
-        transaction_status: 'pending',
-        created_at: '2025-01-25T09:00:00Z',
-      },
-      {
-        id: '2',
-        amount: 45000,
-        status: 'pending',
-        date: '2025-01-24',
-        description: 'Sand delivery - 10 trips',
-        recipient_id: 'supplier1',
-        recipient_name: 'Kano Materials Ltd',
-        created_at: '2025-01-24T11:00:00Z',
-      },
-      {
-        id: '3',
-        amount: 30000,
-        status: 'approved',
-        date: '2025-01-22',
-        description: 'Roofing installation',
-        recipient_id: 'worker2',
-        recipient_name: 'Fatima Aliyu',
-        created_at: '2025-01-22T14:00:00Z',
-      },
-      {
-        id: '4',
-        amount: 75000,
-        status: 'paid',
-        date: '2025-01-21',
-        description: 'Steel bars delivery',
-        recipient_id: 'supplier2',
-        recipient_name: 'Northern Steel Co.',
-        transaction_hash: '0x9876...ijkl',
-        created_at: '2025-01-21T15:00:00Z',
-      },
-      {
-        id: '5',
-        amount: 20000,
-        status: 'rejected',
-        date: '2025-01-20',
-        description: 'Overtime work claim',
-        recipient_id: 'worker3',
-        recipient_name: 'Musa Garba',
-        created_at: '2025-01-20T16:00:00Z',
-      },
-    ];
-
-    setManagerWallet(mockManagerWallet);
-    setPayments(mockPayments);
-  }, [user.id]);
-
-  const handleApprove = async (paymentId: string) => {
-    setIsProcessing(paymentId);
-
-    // Simulate smart contract approval and payment
-    setTimeout(() => {
-      setPayments(prev => prev.map(payment => 
-        payment.id === paymentId 
-          ? { 
-              ...payment, 
-              status: 'approved',
-              transaction_status: 'processing',
-              approver_id: user.id,
-              smart_contract_address: '0xContract123...',
-              transaction_hash: `0x${Math.random().toString(16).substr(2, 8)}...${Math.random().toString(16).substr(2, 4)}`
-            }
-          : payment
-      ));
-
-      setIsProcessing(null);
-
-      // Simulate smart contract execution after a delay
-      setTimeout(() => {
-        setPayments(prev => prev.map(payment => 
-          payment.id === paymentId 
-            ? { ...payment, status: 'paid', transaction_status: 'completed' }
-            : payment
-        ));
-
-        // Update manager wallet balance (simulate deduction)
-        setManagerWallet(prev => prev ? { ...prev, balance: prev.balance - 0.1 } : null);
-
-        toast({
-          title: "Payment completed!",
-          description: "Smart contract executed and funds transferred successfully.",
-        });
-      }, 3000);
-
-      toast({
-        title: "Payment approved!",
-        description: "Smart contract is processing the payment...",
-      });
-    }, 1500);
-  };
-
-  const handleReject = async (paymentId: string) => {
-    setIsProcessing(paymentId);
-
-    setTimeout(() => {
-      setPayments(prev => prev.map(payment => 
-        payment.id === paymentId 
-          ? { ...payment, status: 'rejected', approver_id: user.id }
-          : payment
-      ));
-
-      setIsProcessing(null);
-
-      toast({
-        title: "Payment rejected",
-        description: "The payment request has been declined.",
-        variant: "destructive",
-      });
-    }, 1000);
-  };
-
-  const pendingPayments = payments.filter(p => p.status === 'pending');
-  const totalApproved = payments
-    .filter(p => p.status === 'approved' || p.status === 'paid')
-    .reduce((sum, p) => sum + p.amount, 0);
-  const totalPending = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  const quickStatsCards = [
+    {
+      title: 'Total Workers Paid',
+      value: stats.totalWorkersPaid,
+      icon: Users,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+      suffix: 'workers'
+    },
+    {
+      title: 'Materials Delivered',
+      value: stats.materialsDelivered,
+      icon: Package,
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
+      suffix: 'deliveries'
+    },
+    {
+      title: 'Projects Completed',
+      value: stats.projectsCompleted,
+      icon: CheckCircle,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100',
+      suffix: 'projects'
+    },
+    {
+      title: 'Total Spent',
+      value: stats.totalSpent,
+      icon: DollarSign,
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-100',
+      suffix: '',
+      isCurrency: true
+    }
+  ];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
+      <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="font-playfair text-2xl sm:text-3xl font-bold text-gray-900">
-            Manager Dashboard
+            Welcome back, {user.name}
           </h1>
           <p className="font-roboto text-gray-600 mt-2">
-            Review and approve payment requests from workers and suppliers
+            Manage your construction projects and team
           </p>
         </div>
 
-        {/* Wallet Balance Card */}
-        {managerWallet && (
-          <Card className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-            <CardHeader>
-              <CardTitle className="font-playfair text-xl text-blue-900 flex items-center space-x-2">
-                <Wallet size={20} />
-                <span>Project Wallet Balance</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-roboto text-3xl font-bold text-blue-900">
-                    {managerWallet.balance.toFixed(4)} {managerWallet.currency}
-                  </p>
-                  <p className="font-roboto text-sm text-blue-700 font-mono">
-                    {managerWallet.wallet_address}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-roboto text-sm text-blue-600">Last Updated</p>
-                  <p className="font-roboto text-sm text-blue-800">
-                    {new Date(managerWallet.last_updated).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3">
-                <div className="bg-yellow-100 p-2 rounded-full">
-                  <AlertCircle className="text-yellow-600" size={24} />
-                </div>
-                <div>
-                  <p className="font-roboto text-sm text-gray-600">Pending Requests</p>
-                  <p className="font-roboto text-2xl font-bold text-gray-900">
-                    {pendingPayments.length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3">
-                <div className="bg-red-100 p-2 rounded-full">
-                  <DollarSign className="text-red-600" size={24} />
-                </div>
-                <div>
-                  <p className="font-roboto text-sm text-gray-600">Pending Amount</p>
-                  <p className="font-roboto text-2xl font-bold text-gray-900">
-                    {formatCurrency(totalPending)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3">
-                <div className="bg-green-100 p-2 rounded-full">
-                  <CheckCircle className="text-green-600" size={24} />
-                </div>
-                <div>
-                  <p className="font-roboto text-sm text-gray-600">Total Approved</p>
-                  <p className="font-roboto text-2xl font-bold text-gray-900">
-                    {formatCurrency(totalApproved)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3">
-                <div className="bg-blue-100 p-2 rounded-full">
-                  <Users className="text-blue-600" size={24} />
-                </div>
-                <div>
-                  <p className="font-roboto text-sm text-gray-600">Total Requests</p>
-                  <p className="font-roboto text-2xl font-bold text-gray-900">
-                    {payments.length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {quickStatsCards.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={index} className="hover:shadow-lg transition-shadow duration-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 mb-1">
+                        {stat.title}
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {stat.isCurrency 
+                          ? formatCurrency(stat.value, 'NGN')
+                          : stat.value.toLocaleString()
+                        }
+                        {stat.suffix && (
+                          <span className="text-sm font-normal text-gray-500 ml-1">
+                            {stat.suffix}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className={`p-3 rounded-full ${stat.bgColor}`}>
+                      <Icon size={24} className={stat.color} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
-        {/* Pending Requests */}
-        {pendingPayments.length > 0 && (
-          <div className="mb-8">
-            <h2 className="font-playfair text-xl font-bold text-gray-900 mb-6 flex items-center space-x-2">
-              <AlertCircle className="text-yellow-600" size={20} />
-              <span>Pending Approval</span>
-            </h2>
-            <div className="grid gap-4">
-              {pendingPayments.map((payment) => (
-                <PaymentCard
-                  key={payment.id}
-                  payment={payment}
-                  userRole="manager"
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Main Dashboard Tabs */}
+        <Tabs defaultValue="analytics" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="verification">Verification</TabsTrigger>
+            <TabsTrigger value="invitations">
+              <UserPlus size={16} className="mr-2" />
+              Invitations
+            </TabsTrigger>
+            <TabsTrigger value="users">Team</TabsTrigger>
+            <TabsTrigger value="settings">
+              <Settings size={16} className="mr-2" />
+              Settings
+            </TabsTrigger>
+          </TabsList>
 
-        {/* All Payment Requests */}
-        <div>
-          <h2 className="font-playfair text-xl font-bold text-gray-900 mb-6">
-            All Payment Requests
-          </h2>
-          <div className="grid gap-4">
-            {payments
-              .filter(p => p.status !== 'pending')
-              .map((payment) => (
-                <PaymentCard
-                  key={payment.id}
-                  payment={payment}
-                  userRole="manager"
-                />
-              ))}
-          </div>
-        </div>
+          <TabsContent value="analytics" className="mt-6">
+            <AnalyticsDashboard />
+          </TabsContent>
 
-        {/* Smart Contract Info */}
-        <Card className="mt-8 bg-primary/5 border-primary/20">
-          <CardHeader>
-            <CardTitle className="font-playfair text-lg text-primary flex items-center space-x-2">
-              <CheckCircle size={20} />
-              <span>Smart Contract Integration</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="font-roboto text-gray-700 mb-4">
-              Payments are automatically processed through smart contracts on the Ethereum blockchain. 
-              Once approved, funds are released instantly and securely to recipients' registered wallets.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-3 bg-white rounded-lg border">
-                <p className="font-roboto text-sm text-gray-600">
-                  <strong>Contract Address:</strong> 
+          <TabsContent value="verification" className="mt-6">
+            <VerificationDashboard />
+          </TabsContent>
+
+          <TabsContent value="invitations" className="mt-6">
+            <InvitationManager />
+          </TabsContent>
+
+          <TabsContent value="users" className="mt-6">
+            <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="settings" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Settings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">
+                  Project configuration and settings will be available here.
                 </p>
-                <p className="font-roboto text-xs font-mono text-gray-800 break-all">
-                  0x742d35Cc6cF6A2bC1a4B0e0B0e1b0e1b0e1b0e1b
-                </p>
-              </div>
-              <div className="p-3 bg-white rounded-lg border">
-                <p className="font-roboto text-sm text-gray-600">
-                  <strong>Network:</strong> Ethereum Mainnet
-                </p>
-                <p className="font-roboto text-sm text-gray-600">
-                  <strong>Gas Fees:</strong> Auto-calculated
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

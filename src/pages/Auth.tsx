@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,53 +9,170 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthProps {
   isLogin?: boolean;
 }
 
+interface InvitationData {
+  id: string;
+  invitation_code: string;
+  role: UserRole;
+  email?: string;
+  project_name?: string;
+  admin_id: string;
+}
+
 const Auth = ({ isLogin = false }: AuthProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [invitationData, setInvitationData] = useState<InvitationData | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     name: '',
     role: '' as UserRole,
+    invitation_code: '',
   });
 
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  useEffect(() => {
+    const invitationCode = searchParams.get('invitation');
+    if (invitationCode && !isLogin) {
+      setFormData(prev => ({ ...prev, invitation_code: invitationCode }));
+      validateInvitation(invitationCode);
+    }
+  }, [searchParams, isLogin]);
+
+  const validateInvitation = async (code: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('*')
+        .eq('invitation_code', code)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (error || !data) {
+        toast({
+          title: "Invalid Invitation",
+          description: "This invitation code is invalid or has expired.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setInvitationData(data);
+      setFormData(prev => ({
+        ...prev,
+        role: data.role,
+        email: data.email || prev.email,
+      }));
+
+      toast({
+        title: "Invitation Found",
+        description: `You're invited to join as a ${data.role}${data.project_name ? ` for ${data.project_name}` : ''}`,
+      });
+    } catch (error: any) {
+      console.error('Invitation validation error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to validate invitation",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Mock successful authentication
-      const mockUser = {
-        id: '1',
-        email: formData.email,
-        name: formData.name || 'Test User',
-        role: formData.role || 'worker',
-        created_at: new Date().toISOString(),
-      };
+    try {
+      if (isLogin) {
+        // Handle login with Supabase
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
 
-      // Store user in localStorage for demo
-      localStorage.setItem('contrust_user', JSON.stringify(mockUser));
+        if (error) throw error;
 
+        toast({
+          title: "Welcome back!",
+          description: "You have been logged in to ConTrust.",
+        });
+
+        navigate('/dashboard');
+      } else {
+        // Handle registration with Supabase
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              name: formData.name,
+              role: invitationData ? invitationData.role : formData.role,
+            }
+          }
+        });
+
+        if (error) throw error;
+
+        // If registration with invitation, mark invitation as used and create user assignment
+        if (formData.invitation_code && invitationData && data.user) {
+          const { error: invitationError } = await supabase
+            .from('invitations')
+            .update({ 
+              status: 'used', 
+              used_at: new Date().toISOString(),
+              used_by: data.user.id 
+            })
+            .eq('id', invitationData.id);
+
+          if (invitationError) {
+            console.error('Error updating invitation:', invitationError);
+          }
+
+          // Create user assignment
+          const { error: assignmentError } = await supabase
+            .from('user_assignments')
+            .insert({
+              admin_id: invitationData.admin_id,
+              user_id: data.user.id,
+              project_name: invitationData.project_name,
+            });
+
+          if (assignmentError) {
+            console.error('Error creating user assignment:', assignmentError);
+          }
+
+          toast({
+            title: "Registration Successful!",
+            description: `Welcome to ConTrust! You've joined as a ${invitationData.role}.`,
+          });
+        } else {
+          toast({
+            title: "Account created successfully!",
+            description: "Please check your email to verify your account.",
+          });
+        }
+
+        navigate('/dashboard');
+      }
+    } catch (error: any) {
       toast({
-        title: isLogin ? "Welcome back!" : "Account created successfully!",
-        description: isLogin 
-          ? "You have been logged in to ConTrust." 
-          : "Your ConTrust account has been created.",
+        title: "Error",
+        description: error.message || "An error occurred during authentication",
+        variant: "destructive",
       });
-
-      navigate('/dashboard');
-    }, 1500);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -75,7 +192,9 @@ const Auth = ({ isLogin = false }: AuthProps) => {
           <p className="font-roboto text-gray-600 mt-2">
             {isLogin 
               ? 'Sign in to your ConTrust account' 
-              : 'Join ConTrust for secure construction payments'
+              : invitationData 
+                ? `Join as ${invitationData.role}${invitationData.project_name ? ` for ${invitationData.project_name}` : ''}`
+                : 'Join ConTrust for secure construction payments'
             }
           </p>
         </CardHeader>
@@ -114,6 +233,7 @@ const Auth = ({ isLogin = false }: AuthProps) => {
                   className="pl-10"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
+                  disabled={!!invitationData?.email}
                   required
                 />
               </div>
@@ -144,7 +264,7 @@ const Auth = ({ isLogin = false }: AuthProps) => {
               </div>
             </div>
 
-            {!isLogin && (
+            {!isLogin && !invitationData && (
               <div className="space-y-2">
                 <Label htmlFor="role" className="font-roboto font-medium">
                   Role
@@ -162,6 +282,17 @@ const Auth = ({ isLogin = false }: AuthProps) => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+            )}
+
+            {!isLogin && formData.invitation_code && (
+              <div className="space-y-2">
+                <Label className="font-roboto font-medium">Invitation Code</Label>
+                <Input
+                  value={formData.invitation_code}
+                  disabled
+                  className="bg-gray-100"
+                />
               </div>
             )}
 

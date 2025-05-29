@@ -36,7 +36,7 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
             className="flex items-center space-x-3 font-playfair font-bold text-xl hover:text-accent transition-colors"
           >
             <img 
-              src="public/contrust-logo.png.png" 
+              src="/contrust-logo.png.png" 
               alt="ConTrust Logo" 
               className="h-16 w-auto p-1"
             />
@@ -59,6 +59,12 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
                   Dashboard
                 </Link>
                 <Link 
+                  to="/projects" 
+                  className="hover:text-accent transition-colors font-roboto text-white"
+                >
+                  Projects
+                </Link>
+                <Link 
                   to="/uploads" 
                   className="hover:text-accent transition-colors font-roboto text-white"
                 >
@@ -66,6 +72,12 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
                 </Link>
               </>
             )}
+            <Link 
+              to="/docs" 
+              className="hover:text-accent transition-colors font-roboto text-white"
+            >
+              Documentation
+            </Link>
             {user ? (
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
@@ -136,6 +148,13 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
                     Dashboard
                   </Link>
                   <Link 
+                    to="/projects" 
+                    className="hover:text-accent transition-colors font-roboto text-white"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Projects
+                  </Link>
+                  <Link 
                     to="/uploads" 
                     className="hover:text-accent transition-colors font-roboto text-white"
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -144,6 +163,13 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
                   </Link>
                 </>
               )}
+              <Link 
+                to="/docs" 
+                className="hover:text-accent transition-colors font-roboto text-white"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Documentation
+              </Link>
               {user ? (
                 <div className="flex flex-col space-y-3">
                   <div className="flex items-center space-x-2 text-white">
