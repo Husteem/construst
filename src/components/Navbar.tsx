@@ -1,9 +1,8 @@
 
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Menu, X, User, Hammer } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Menu, X, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 
 interface NavbarProps {
   user?: any;
@@ -12,18 +11,11 @@ interface NavbarProps {
 
 const Navbar = ({ user, onLogout }: NavbarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
 
-  const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-      toast({
-        title: "Logged out successfully",
-        description: "You have been logged out of ConTrust.",
-      });
-      navigate('/');
-    }
+  // Mock user for development
+  const mockUser = {
+    name: 'Development User',
+    role: 'manager'
   };
 
   return (
@@ -50,68 +42,34 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
             >
               Home
             </Link>
-            {user && (
-              <>
-                <Link 
-                  to="/dashboard" 
-                  className="hover:text-accent transition-colors font-roboto text-white"
-                >
-                  Dashboard
-                </Link>
-                <Link 
-                  to="/projects" 
-                  className="hover:text-accent transition-colors font-roboto text-white"
-                >
-                  Projects
-                </Link>
-                <Link 
-                  to="/uploads" 
-                  className="hover:text-accent transition-colors font-roboto text-white"
-                >
-                  Uploads
-                </Link>
-              </>
-            )}
+            <Link 
+              to="/dashboard" 
+              className="hover:text-accent transition-colors font-roboto text-white"
+            >
+              Dashboard
+            </Link>
+            <Link 
+              to="/projects" 
+              className="hover:text-accent transition-colors font-roboto text-white"
+            >
+              Projects
+            </Link>
+            <Link 
+              to="/uploads" 
+              className="hover:text-accent transition-colors font-roboto text-white"
+            >
+              Uploads
+            </Link>
             <Link 
               to="/docs" 
               className="hover:text-accent transition-colors font-roboto text-white"
             >
               Documentation
             </Link>
-            {user ? (
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <User size={16} />
-                  <span className="font-roboto text-sm">{user.name}</span>
-                </div>
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                  className="text-white border-white hover:bg-accent hover:border-accent hover:text-primary"
-                >
-                  <LogOut size={16} className="mr-2" />
-                  Logout
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-4">
-                <Link to="/login">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="text-white border-white hover:bg-accent hover:border-accent hover:text-primary bg-transparent"
-                  >
-                    Login
-                  </Button>
-                </Link>
-                <Link to="/signup">
-                  <Button className="bg-accent hover:bg-accent/90 text-primary font-medium">
-                    Sign Up
-                  </Button>
-                </Link>
-              </div>
-            )}
+            <div className="flex items-center space-x-2">
+              <User size={16} />
+              <span className="font-roboto text-sm">{mockUser.name}</span>
+            </div>
           </div>
 
           {/* Mobile menu button */}
@@ -138,31 +96,27 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
               >
                 Home
               </Link>
-              {user && (
-                <>
-                  <Link 
-                    to="/dashboard" 
-                    className="hover:text-accent transition-colors font-roboto text-white"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
-                  <Link 
-                    to="/projects" 
-                    className="hover:text-accent transition-colors font-roboto text-white"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Projects
-                  </Link>
-                  <Link 
-                    to="/uploads" 
-                    className="hover:text-accent transition-colors font-roboto text-white"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Uploads
-                  </Link>
-                </>
-              )}
+              <Link 
+                to="/dashboard" 
+                className="hover:text-accent transition-colors font-roboto text-white"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+              <Link 
+                to="/projects" 
+                className="hover:text-accent transition-colors font-roboto text-white"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Projects
+              </Link>
+              <Link 
+                to="/uploads" 
+                className="hover:text-accent transition-colors font-roboto text-white"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Uploads
+              </Link>
               <Link 
                 to="/docs" 
                 className="hover:text-accent transition-colors font-roboto text-white"
@@ -170,43 +124,10 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
               >
                 Documentation
               </Link>
-              {user ? (
-                <div className="flex flex-col space-y-3">
-                  <div className="flex items-center space-x-2 text-white">
-                    <User size={16} />
-                    <span className="font-roboto text-sm">{user.name}</span>
-                  </div>
-                  <Button
-                    onClick={() => {
-                      handleLogout();
-                      setIsMobileMenuOpen(false);
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="w-fit text-white border-white hover:bg-accent hover:border-accent hover:text-primary bg-transparent"
-                  >
-                    <LogOut size={16} className="mr-2" />
-                    Logout
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col space-y-3">
-                  <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-fit text-white border-white hover:bg-accent hover:border-accent hover:text-primary bg-transparent"
-                    >
-                      Login
-                    </Button>
-                  </Link>
-                  <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Button className="w-fit bg-accent hover:bg-accent/90 text-primary font-medium">
-                      Sign Up
-                    </Button>
-                  </Link>
-                </div>
-              )}
+              <div className="flex items-center space-x-2 text-white">
+                <User size={16} />
+                <span className="font-roboto text-sm">{mockUser.name}</span>
+              </div>
             </div>
           </div>
         )}

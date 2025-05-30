@@ -7,10 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Copy, Plus, Ban, Clock, CheckCircle } from 'lucide-react';
+import { Copy, Plus, Trash2, Mail, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Invitation {
   id: string;
@@ -20,21 +19,21 @@ interface Invitation {
   project_name?: string;
   status: 'pending' | 'used' | 'expired' | 'revoked';
   expires_at: string;
-  used_at?: string;
   created_at: string;
+  used_at?: string;
+  used_by?: string;
 }
 
 const InvitationManager = () => {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({
-    role: '' as UserRole,
     email: '',
+    role: '' as UserRole,
     project_name: '',
-    expires_in_days: '7'
+    expires_in_days: '7',
   });
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -44,18 +43,37 @@ const InvitationManager = () => {
   const fetchInvitations = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('invitations')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Mock data for development - replace with real Supabase call when auth is ready
+      const mockInvitations: Invitation[] = [
+        {
+          id: '1',
+          invitation_code: 'INV-ABC12345',
+          role: 'worker',
+          email: 'worker@example.com',
+          project_name: 'Building Construction Phase 1',
+          status: 'pending',
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: '2',
+          invitation_code: 'INV-DEF67890',
+          role: 'supplier',
+          email: 'supplier@example.com',
+          project_name: 'Road Infrastructure',
+          status: 'used',
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date().toISOString(),
+          used_at: new Date().toISOString(),
+        },
+      ];
 
-      if (error) throw error;
-      setInvitations(data || []);
+      setInvitations(mockInvitations);
     } catch (error: any) {
       console.error('Error fetching invitations:', error);
       toast({
-        title: "Error fetching invitations",
-        description: error.message,
+        title: "Error",
+        description: "Failed to fetch invitations",
         variant: "destructive",
       });
     } finally {
@@ -63,87 +81,78 @@ const InvitationManager = () => {
     }
   };
 
-  const createInvitation = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!formData.role) {
       toast({
-        title: "Validation Error",
-        description: "Please select a role for the invitation",
+        title: "Error",
+        description: "Please select a role",
         variant: "destructive",
       });
       return;
     }
 
-    setIsCreating(true);
+    setIsLoading(true);
     try {
-      // Generate invitation code using the database function
-      const { data: codeData, error: codeError } = await supabase
-        .rpc('generate_invitation_code');
+      // Generate mock invitation for development
+      const mockInvitation: Invitation = {
+        id: Math.random().toString(36).substr(2, 9),
+        invitation_code: `INV-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+        role: formData.role,
+        email: formData.email || undefined,
+        project_name: formData.project_name || undefined,
+        status: 'pending',
+        expires_at: new Date(Date.now() + parseInt(formData.expires_in_days) * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date().toISOString(),
+      };
 
-      if (codeError) throw codeError;
+      setInvitations(prev => [mockInvitation, ...prev]);
 
-      const invitationCode = codeData;
-
-      // Calculate expiration date
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + parseInt(formData.expires_in_days));
-
-      const { data, error } = await supabase
-        .from('invitations')
-        .insert({
-          invitation_code: invitationCode,
-          role: formData.role,
-          email: formData.email || null,
-          project_name: formData.project_name || null,
-          expires_at: expiresAt.toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setInvitations(prev => [data, ...prev]);
+      // Reset form
+      setFormData({
+        email: '',
+        role: '' as UserRole,
+        project_name: '',
+        expires_in_days: '7',
+      });
 
       toast({
         title: "Invitation Created",
-        description: `Invitation code: ${invitationCode}`,
+        description: "Invitation has been created successfully",
       });
-
-      setFormData({
-        role: '' as UserRole,
-        email: '',
-        project_name: '',
-        expires_in_days: '7'
-      });
-      setShowCreateForm(false);
     } catch (error: any) {
+      console.error('Error creating invitation:', error);
       toast({
-        title: "Error creating invitation",
-        description: error.message,
+        title: "Error",
+        description: "Failed to create invitation",
         variant: "destructive",
       });
     } finally {
-      setIsCreating(false);
+      setIsLoading(false);
     }
   };
 
-  const copyInvitationCode = (code: string) => {
-    const invitationUrl = `${window.location.origin}/signup?invitation=${code}`;
-    navigator.clipboard.writeText(invitationUrl);
+  const copyInvitationLink = (code: string) => {
+    const link = `${window.location.origin}/signup?invitation=${code}`;
+    navigator.clipboard.writeText(link);
     toast({
-      title: "Copied!",
-      description: "Invitation link copied to clipboard",
+      title: "Link Copied",
+      description: "Invitation link has been copied to clipboard",
+    });
+  };
+
+  const copyInvitationCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast({
+      title: "Code Copied",
+      description: "Invitation code has been copied to clipboard",
     });
   };
 
   const revokeInvitation = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('invitations')
-        .update({ status: 'revoked' })
-        .eq('id', id);
-
-      if (error) throw error;
-
+      // Mock revoke for development
       setInvitations(prev => 
         prev.map(inv => 
           inv.id === id ? { ...inv, status: 'revoked' as const } : inv
@@ -155,67 +164,75 @@ const InvitationManager = () => {
         description: "The invitation has been revoked successfully",
       });
     } catch (error: any) {
+      console.error('Error revoking invitation:', error);
       toast({
-        title: "Error revoking invitation",
-        description: error.message,
+        title: "Error",
+        description: "Failed to revoke invitation",
         variant: "destructive",
       });
     }
   };
 
-  const getStatusBadge = (status: string, expiresAt: string) => {
-    const isExpired = new Date(expiresAt) < new Date();
-    
-    if (isExpired && status === 'pending') {
-      return <Badge variant="secondary"><Clock size={12} className="mr-1" />Expired</Badge>;
-    }
-
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="secondary"><Clock size={12} className="mr-1" />Pending</Badge>;
+        return <Badge variant="default" className="bg-yellow-500"><Clock size={12} className="mr-1" />Pending</Badge>;
       case 'used':
         return <Badge variant="default" className="bg-green-500"><CheckCircle size={12} className="mr-1" />Used</Badge>;
+      case 'expired':
+        return <Badge variant="destructive"><XCircle size={12} className="mr-1" />Expired</Badge>;
       case 'revoked':
-        return <Badge variant="destructive"><Ban size={12} className="mr-1" />Revoked</Badge>;
+        return <Badge variant="destructive"><XCircle size={12} className="mr-1" />Revoked</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'worker':
+        return <Badge variant="default" className="bg-blue-500">Worker</Badge>;
+      case 'supplier':
+        return <Badge variant="default" className="bg-green-500">Supplier</Badge>;
+      case 'manager':
+        return <Badge variant="default" className="bg-purple-500">Manager</Badge>;
+      default:
+        return <Badge variant="secondary">{role}</Badge>;
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="font-playfair text-2xl font-bold text-gray-900">
-            Invitation Management
-          </h2>
-          <p className="text-gray-600">Create and manage invitations for workers and suppliers</p>
-        </div>
-        <Button 
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          className="bg-primary hover:bg-primary/90"
-        >
-          <Plus size={16} className="mr-2" />
-          Create Invitation
-        </Button>
+      <div>
+        <h2 className="font-playfair text-2xl font-bold text-gray-900 mb-2">
+          Invitation Management
+        </h2>
+        <p className="text-gray-600">Create and manage invitations for workers and suppliers</p>
       </div>
 
-      {showCreateForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Create New Invitation</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* Create Invitation Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus size={20} />
+            Create New Invitation
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email (Optional)</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="role">Role *</Label>
                 <Select onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as UserRole }))}>
                   <SelectTrigger>
@@ -224,20 +241,12 @@ const InvitationManager = () => {
                   <SelectContent>
                     <SelectItem value="worker">Construction Worker</SelectItem>
                     <SelectItem value="supplier">Material Supplier</SelectItem>
+                    <SelectItem value="manager">Project Manager</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="email">Email (Optional)</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="worker@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                />
-              </div>
-              <div>
+
+              <div className="space-y-2">
                 <Label htmlFor="project_name">Project Name (Optional)</Label>
                 <Input
                   id="project_name"
@@ -246,52 +255,45 @@ const InvitationManager = () => {
                   onChange={(e) => setFormData(prev => ({ ...prev, project_name: e.target.value }))}
                 />
               </div>
-              <div>
+
+              <div className="space-y-2">
                 <Label htmlFor="expires_in_days">Expires In (Days)</Label>
-                <Select 
-                  value={formData.expires_in_days}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, expires_in_days: value }))}
-                >
+                <Select onValueChange={(value) => setFormData(prev => ({ ...prev, expires_in_days: value }))}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="7 days" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 Day</SelectItem>
-                    <SelectItem value="3">3 Days</SelectItem>
-                    <SelectItem value="7">7 Days</SelectItem>
-                    <SelectItem value="14">14 Days</SelectItem>
-                    <SelectItem value="30">30 Days</SelectItem>
+                    <SelectItem value="1">1 day</SelectItem>
+                    <SelectItem value="3">3 days</SelectItem>
+                    <SelectItem value="7">7 days</SelectItem>
+                    <SelectItem value="14">14 days</SelectItem>
+                    <SelectItem value="30">30 days</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <div className="flex space-x-2">
-              <Button 
-                onClick={createInvitation} 
-                disabled={isCreating}
-                className="bg-primary hover:bg-primary/90"
-              >
-                {isCreating ? 'Creating...' : 'Create Invitation'}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setShowCreateForm(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
+            <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
+              {isLoading ? 'Creating...' : 'Create Invitation'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Invitations Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Existing Invitations</CardTitle>
+          <CardTitle>Active Invitations</CardTitle>
         </CardHeader>
         <CardContent>
-          {invitations.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : invitations.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500">No invitations created yet</p>
+              <p className="text-sm text-gray-400 mt-2">Create your first invitation using the form above</p>
             </div>
           ) : (
             <Table>
@@ -309,20 +311,29 @@ const InvitationManager = () => {
               <TableBody>
                 {invitations.map((invitation) => (
                   <TableRow key={invitation.id}>
-                    <TableCell className="font-mono">{invitation.invitation_code}</TableCell>
-                    <TableCell className="capitalize">{invitation.role}</TableCell>
+                    <TableCell className="font-mono text-sm">{invitation.invitation_code}</TableCell>
+                    <TableCell>{getRoleBadge(invitation.role)}</TableCell>
                     <TableCell>{invitation.email || '-'}</TableCell>
                     <TableCell>{invitation.project_name || '-'}</TableCell>
-                    <TableCell>{getStatusBadge(invitation.status, invitation.expires_at)}</TableCell>
+                    <TableCell>{getStatusBadge(invitation.status)}</TableCell>
                     <TableCell>{new Date(invitation.expires_at).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <div className="flex space-x-2">
+                      <div className="flex items-center gap-2">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => copyInvitationCode(invitation.invitation_code)}
                         >
-                          <Copy size={14} />
+                          <Copy size={12} className="mr-1" />
+                          Code
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copyInvitationLink(invitation.invitation_code)}
+                        >
+                          <Mail size={12} className="mr-1" />
+                          Link
                         </Button>
                         {invitation.status === 'pending' && (
                           <Button
@@ -330,7 +341,8 @@ const InvitationManager = () => {
                             variant="destructive"
                             onClick={() => revokeInvitation(invitation.id)}
                           >
-                            <Ban size={14} />
+                            <Trash2 size={12} className="mr-1" />
+                            Revoke
                           </Button>
                         )}
                       </div>

@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { User } from '@/types';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Landing from './pages/Landing';
@@ -18,21 +17,6 @@ import Documentation from './pages/Documentation';
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    // Check for stored user on app load
-    const storedUser = localStorage.getItem('contrust_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('contrust_user');
-    setUser(null);
-  };
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -40,7 +24,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <div className="min-h-screen flex flex-col">
-            <Navbar user={user} onLogout={handleLogout} />
+            <Navbar />
             <main className="flex-1">
               <Routes>
                 <Route path="/" element={<Landing />} />
@@ -50,7 +34,6 @@ const App = () => {
                 <Route path="/uploads" element={<Uploads />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/docs" element={<Documentation />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
