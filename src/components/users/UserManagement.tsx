@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +7,7 @@ import { Users, UserCheck, Package } from 'lucide-react';
 interface AssignedUser {
   id: string;
   user_id: string;
+  admin_id: string; // Added this property
   project_name?: string;
   assigned_at: string;
   name: string;
