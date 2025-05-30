@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -353,6 +352,10 @@ const VerificationDashboard = () => {
                 </p>
               </CardContent>
             </Card>
+          ) : (
+            materialUploads.map(upload => (
+              <MaterialUploadCard key={upload.id} upload={upload} />
+            ))
           )}
         </TabsContent>
       </Tabs>
