@@ -22,6 +22,7 @@ interface Invitation {
   used_at?: string;
   used_by?: string;
   admin_id: string;
+  manager_name?: string;
 }
 
 // Store invitations in localStorage for development
@@ -43,15 +44,24 @@ const InvitationManager = () => {
     fetchInvitations();
   }, []);
 
+  const getCurrentManager = () => {
+    const storedRole = localStorage.getItem('dev_user_role') || 'manager';
+    const managerId = `manager-${Math.random().toString(36).substr(2, 9)}`;
+    return {
+      id: managerId,
+      name: `Development Manager`,
+      role: storedRole as UserRole
+    };
+  };
+
   const fetchInvitations = () => {
     setIsLoading(true);
     try {
-      // Get invitations from localStorage for development
       const storedInvitations = localStorage.getItem(INVITATIONS_STORAGE_KEY);
       if (storedInvitations) {
         setInvitations(JSON.parse(storedInvitations));
       } else {
-        // Initialize with some sample data
+        const manager = getCurrentManager();
         const sampleInvitations: Invitation[] = [
           {
             id: '1',
@@ -62,7 +72,8 @@ const InvitationManager = () => {
             status: 'pending',
             expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             created_at: new Date().toISOString(),
-            admin_id: 'dev-user-1',
+            admin_id: manager.id,
+            manager_name: manager.name,
           },
           {
             id: '2',
@@ -74,7 +85,8 @@ const InvitationManager = () => {
             expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             created_at: new Date().toISOString(),
             used_at: new Date().toISOString(),
-            admin_id: 'dev-user-1',
+            admin_id: manager.id,
+            manager_name: manager.name,
           },
         ];
         setInvitations(sampleInvitations);
@@ -106,7 +118,7 @@ const InvitationManager = () => {
 
     setIsLoading(true);
     try {
-      // Create new invitation
+      const manager = getCurrentManager();
       const newInvitation: Invitation = {
         id: Math.random().toString(36).substr(2, 9),
         invitation_code: `INV-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
@@ -116,16 +128,15 @@ const InvitationManager = () => {
         status: 'pending',
         expires_at: new Date(Date.now() + parseInt(formData.expires_in_days) * 24 * 60 * 60 * 1000).toISOString(),
         created_at: new Date().toISOString(),
-        admin_id: 'dev-user-1', // Mock admin ID for development
+        admin_id: manager.id,
+        manager_name: manager.name,
       };
 
       const updatedInvitations = [newInvitation, ...invitations];
       setInvitations(updatedInvitations);
       
-      // Store in localStorage for development
       localStorage.setItem(INVITATIONS_STORAGE_KEY, JSON.stringify(updatedInvitations));
 
-      // Reset form
       setFormData({
         email: '',
         role: '' as UserRole,

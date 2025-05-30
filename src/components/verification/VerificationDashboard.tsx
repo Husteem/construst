@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Upload {
   id: string;
@@ -15,6 +14,8 @@ interface Upload {
   photo_url?: string;
   description: string;
   gps_coordinates?: string;
+  user_name?: string;
+  user_role?: string;
 }
 
 interface WorkUpload extends Upload {
@@ -30,6 +31,10 @@ interface MaterialUpload extends Upload {
   delivery_date: string;
 }
 
+const USER_ASSIGNMENTS_KEY = 'contrust_dev_user_assignments';
+const WORK_UPLOADS_KEY = 'contrust_dev_work_uploads';
+const MATERIAL_UPLOADS_KEY = 'contrust_dev_material_uploads';
+
 const VerificationDashboard = () => {
   const [workUploads, setWorkUploads] = useState<WorkUpload[]>([]);
   const [materialUploads, setMaterialUploads] = useState<MaterialUpload[]>([]);
@@ -40,15 +45,92 @@ const VerificationDashboard = () => {
     fetchUploads();
   }, []);
 
+  const getCurrentManagerId = () => {
+    const currentUser = localStorage.getItem('current_user');
+    if (currentUser) {
+      const user = JSON.parse(currentUser);
+      return user.id;
+    }
+    return 'manager-default';
+  };
+
+  const getTeamMembers = () => {
+    const managerId = getCurrentManagerId();
+    const assignments = localStorage.getItem(USER_ASSIGNMENTS_KEY);
+    if (!assignments) return [];
+    
+    const allAssignments = JSON.parse(assignments);
+    return allAssignments.filter((assignment: any) => assignment.admin_id === managerId);
+  };
+
   const fetchUploads = async () => {
     try {
-      const [workData, materialData] = await Promise.all([
-        (supabase as any).from('work_uploads').select('*').order('created_at', { ascending: false }),
-        (supabase as any).from('material_uploads').select('*').order('created_at', { ascending: false })
-      ]);
+      const teamMembers = getTeamMembers();
+      const teamMemberIds = teamMembers.map((member: any) => member.user_id);
 
-      if (workData.data) setWorkUploads(workData.data);
-      if (materialData.data) setMaterialUploads(materialData.data);
+      // Get work uploads from team members
+      const storedWorkUploads = localStorage.getItem(WORK_UPLOADS_KEY);
+      let workData: WorkUpload[] = [];
+      
+      if (storedWorkUploads) {
+        const allWorkUploads = JSON.parse(storedWorkUploads);
+        workData = allWorkUploads.filter((upload: WorkUpload) => 
+          teamMemberIds.includes(upload.worker_id)
+        );
+      } else {
+        // Create sample data if team members exist
+        if (teamMembers.length > 0) {
+          workData = teamMembers
+            .filter((member: any) => member.role === 'worker')
+            .map((worker: any, index: number) => ({
+              id: `work-${index + 1}`,
+              worker_id: worker.user_id,
+              work_date: new Date().toISOString().split('T')[0],
+              hours_worked: 8,
+              description: `Daily construction work completed by ${worker.name}`,
+              status: 'pending' as const,
+              created_at: new Date().toISOString(),
+              gps_coordinates: '6.5244,3.3792',
+              user_name: worker.name,
+              user_role: worker.role,
+            }));
+          localStorage.setItem(WORK_UPLOADS_KEY, JSON.stringify(workData));
+        }
+      }
+
+      // Get material uploads from team members
+      const storedMaterialUploads = localStorage.getItem(MATERIAL_UPLOADS_KEY);
+      let materialData: MaterialUpload[] = [];
+      
+      if (storedMaterialUploads) {
+        const allMaterialUploads = JSON.parse(storedMaterialUploads);
+        materialData = allMaterialUploads.filter((upload: MaterialUpload) => 
+          teamMemberIds.includes(upload.supplier_id)
+        );
+      } else {
+        // Create sample data if team members exist
+        if (teamMembers.length > 0) {
+          materialData = teamMembers
+            .filter((member: any) => member.role === 'supplier')
+            .map((supplier: any, index: number) => ({
+              id: `material-${index + 1}`,
+              supplier_id: supplier.user_id,
+              material_type: 'Cement bags',
+              quantity: 50,
+              delivery_date: new Date().toISOString().split('T')[0],
+              description: `Material delivery by ${supplier.name}`,
+              status: 'pending' as const,
+              created_at: new Date().toISOString(),
+              gps_coordinates: '6.5244,3.3792',
+              user_name: supplier.name,
+              user_role: supplier.role,
+            }));
+          localStorage.setItem(MATERIAL_UPLOADS_KEY, JSON.stringify(materialData));
+        }
+      }
+
+      setWorkUploads(workData);
+      setMaterialUploads(materialData);
     } catch (error) {
       console.error('Error fetching uploads:', error);
     } finally {
@@ -58,20 +140,32 @@ const VerificationDashboard = () => {
 
   const updateStatus = async (type: 'work' | 'material', id: string, status: 'verified' | 'rejected') => {
     try {
-      const table = type === 'work' ? 'work_uploads' : 'material_uploads';
-      const { error } = await (supabase as any)
-        .from(table)
-        .update({ status })
-        .eq('id', id);
+      const storageKey = type === 'work' ? WORK_UPLOADS_KEY : MATERIAL_UPLOADS_KEY;
+      const currentData = localStorage.getItem(storageKey);
+      
+      if (!currentData) return;
 
-      if (error) throw error;
+      const uploads = JSON.parse(currentData);
+      const updatedUploads = uploads.map((upload: any) => 
+        upload.id === id ? { ...upload, status } : upload
+      );
+
+      localStorage.setItem(storageKey, JSON.stringify(updatedUploads));
+
+      if (type === 'work') {
+        setWorkUploads(updatedUploads.filter((upload: WorkUpload) => 
+          getTeamMembers().map((member: any) => member.user_id).includes(upload.worker_id)
+        ));
+      } else {
+        setMaterialUploads(updatedUploads.filter((upload: MaterialUpload) => 
+          getTeamMembers().map((member: any) => member.user_id).includes(upload.supplier_id)
+        ));
+      }
 
       toast({
         title: `Upload ${status}`,
         description: `The upload has been ${status}.`,
       });
-
-      fetchUploads();
     } catch (error: any) {
       toast({
         title: "Error updating status",
@@ -101,7 +195,8 @@ const VerificationDashboard = () => {
           <div>
             <h3 className="font-medium">Work Progress - {new Date(upload.work_date).toLocaleDateString()}</h3>
             <p className="text-sm text-gray-600">Hours: {upload.hours_worked}</p>
-            <p className="text-sm text-gray-600">Worker ID: {upload.worker_id}</p>
+            <p className="text-sm text-gray-600">Worker: {upload.user_name}</p>
+            <p className="text-xs text-gray-500">ID: {upload.worker_id}</p>
           </div>
           {getStatusBadge(upload.status)}
         </div>
@@ -148,7 +243,8 @@ const VerificationDashboard = () => {
             <h3 className="font-medium">{upload.material_type}</h3>
             <p className="text-sm text-gray-600">Quantity: {upload.quantity}</p>
             <p className="text-sm text-gray-600">Delivery: {new Date(upload.delivery_date).toLocaleDateString()}</p>
-            <p className="text-sm text-gray-600">Supplier ID: {upload.supplier_id}</p>
+            <p className="text-sm text-gray-600">Supplier: {upload.user_name}</p>
+            <p className="text-xs text-gray-500">ID: {upload.supplier_id}</p>
           </div>
           {getStatusBadge(upload.status)}
         </div>
@@ -195,13 +291,29 @@ const VerificationDashboard = () => {
     );
   }
 
+  const teamMembers = getTeamMembers();
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="font-playfair text-2xl font-bold text-gray-900 mb-2">
           Verification Dashboard
         </h2>
-        <p className="text-gray-600">Review and approve work progress and material deliveries</p>
+        <p className="text-gray-600">Review and approve work progress and material deliveries from your team</p>
+        {teamMembers.length === 0 && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800">
+              No team members found. Create invitations to add workers and suppliers to see their uploads here.
+            </p>
+          </div>
+        )}
+        {teamMembers.length > 0 && (
+          <div className="mt-4">
+            <p className="text-sm text-gray-600">
+              Team members: {teamMembers.map((member: any) => member.name).join(', ')}
+            </p>
+          </div>
+        )}
       </div>
 
       <Tabs defaultValue="work" className="w-full">
@@ -218,7 +330,10 @@ const VerificationDashboard = () => {
           {workUploads.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <p className="text-gray-500">No work uploads found</p>
+                <p className="text-gray-500">No work uploads from your team</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Work uploads from your invited workers will appear here
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -232,13 +347,12 @@ const VerificationDashboard = () => {
           {materialUploads.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <p className="text-gray-500">No material uploads found</p>
+                <p className="text-gray-500">No material uploads from your team</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Material deliveries from your invited suppliers will appear here
+                </p>
               </CardContent>
             </Card>
-          ) : (
-            materialUploads.map(upload => (
-              <MaterialUploadCard key={upload.id} upload={upload} />
-            ))
           )}
         </TabsContent>
       </Tabs>

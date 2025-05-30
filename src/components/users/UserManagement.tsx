@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Users, UserCheck, Package } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface AssignedUser {
   id: string;
@@ -16,6 +15,8 @@ interface AssignedUser {
   role: string;
   status: 'active' | 'inactive';
 }
+
+const USER_ASSIGNMENTS_KEY = 'contrust_dev_user_assignments';
 
 const UserManagement = () => {
   const [assignedUsers, setAssignedUsers] = useState<AssignedUser[]>([]);
@@ -30,65 +31,41 @@ const UserManagement = () => {
     fetchAssignedUsers();
   }, []);
 
+  const getCurrentManagerId = () => {
+    const currentUser = localStorage.getItem('current_user');
+    if (currentUser) {
+      const user = JSON.parse(currentUser);
+      return user.id;
+    }
+    return 'manager-default';
+  };
+
   const fetchAssignedUsers = async () => {
     try {
-      // Fetch user assignments from database
-      const { data: assignments, error } = await supabase
-        .from('user_assignments')
-        .select('*');
-
-      if (error) {
-        console.error('Error fetching user assignments:', error);
-        // Fall back to mock data for now since we don't have user profiles table yet
-        const sampleUsers: AssignedUser[] = [
-          {
-            id: '1',
-            user_id: 'user1',
-            project_name: 'Building Construction Phase 1',
-            assigned_at: new Date().toISOString(),
-            name: 'John Doe',
-            email: 'john.doe@example.com',
-            role: 'worker',
-            status: 'active',
-          },
-          {
-            id: '2',
-            user_id: 'user2',
-            project_name: 'Road Infrastructure',
-            assigned_at: new Date().toISOString(),
-            name: 'Jane Smith',
-            email: 'jane.smith@example.com',
-            role: 'supplier',
-            status: 'active',
-          },
-          {
-            id: '3',
-            user_id: 'user3',
-            project_name: 'Building Construction Phase 1',
-            assigned_at: new Date().toISOString(),
-            name: 'Mike Johnson',
-            email: 'mike.johnson@example.com',
-            role: 'worker',
-            status: 'active',
-          },
-        ];
+      const managerId = getCurrentManagerId();
+      const storedAssignments = localStorage.getItem(USER_ASSIGNMENTS_KEY);
+      
+      if (storedAssignments) {
+        const allAssignments = JSON.parse(storedAssignments);
+        const managerAssignments = allAssignments.filter((assignment: AssignedUser) => 
+          assignment.admin_id === managerId
+        );
         
-        setAssignedUsers(sampleUsers);
+        setAssignedUsers(managerAssignments);
         setStats({
-          totalUsers: sampleUsers.length,
-          activeWorkers: sampleUsers.filter(u => u.role === 'worker').length,
-          activeSuppliers: sampleUsers.filter(u => u.role === 'supplier').length,
+          totalUsers: managerAssignments.length,
+          activeWorkers: managerAssignments.filter((u: AssignedUser) => u.role === 'worker').length,
+          activeSuppliers: managerAssignments.filter((u: AssignedUser) => u.role === 'supplier').length,
         });
-        return;
+      } else {
+        // No assignments found
+        setAssignedUsers([]);
+        setStats({
+          totalUsers: 0,
+          activeWorkers: 0,
+          activeSuppliers: 0,
+        });
       }
-
-      // For now, show empty state since we need to implement user profiles
-      setAssignedUsers([]);
-      setStats({
-        totalUsers: 0,
-        activeWorkers: 0,
-        activeSuppliers: 0,
-      });
     } catch (error: any) {
       console.error('Error fetching assigned users:', error);
       setAssignedUsers([]);
@@ -189,12 +166,12 @@ const UserManagement = () => {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Assigned Users</CardTitle>
+          <CardTitle>Your Team Members</CardTitle>
         </CardHeader>
         <CardContent>
           {assignedUsers.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">No users assigned yet</p>
+              <p className="text-gray-500">No team members assigned yet</p>
               <p className="text-sm text-gray-400 mt-2">
                 Create invitations to add workers and suppliers to your projects
               </p>

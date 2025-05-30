@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Upload, Camera, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,8 @@ interface MaterialUploadFormProps {
   onUploadComplete: () => void;
 }
 
+const MATERIAL_UPLOADS_KEY = 'contrust_dev_material_uploads';
+
 const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProps) => {
   const [formData, setFormData] = useState({
     material_type: '',
@@ -24,6 +25,18 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
   const [isUploading, setIsUploading] = useState(false);
   const [gpsCoords, setGpsCoords] = useState<string>('');
   const { toast } = useToast();
+
+  const getCurrentUser = () => {
+    const currentUser = localStorage.getItem('current_user');
+    if (currentUser) {
+      return JSON.parse(currentUser);
+    }
+    return {
+      id: userId,
+      name: 'Development Supplier',
+      role: 'supplier'
+    };
+  };
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -58,16 +71,31 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
     setIsUploading(true);
 
     try {
-      // Mock upload for development - no actual Supabase calls
-      console.log('Mock material upload:', {
-        supplier_id: userId,
+      const currentUser = getCurrentUser();
+      
+      // Create material upload record
+      const materialUpload = {
+        id: `material-${Math.random().toString(36).substr(2, 9)}`,
+        supplier_id: currentUser.id,
         material_type: formData.material_type,
         quantity: parseFloat(formData.quantity),
         delivery_date: formData.delivery_date,
         description: formData.description,
-        photo_file: selectedFile?.name,
+        photo_url: selectedFile ? `uploads/${selectedFile.name}` : undefined,
         gps_coordinates: gpsCoords,
-      });
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        user_name: currentUser.name,
+        user_role: currentUser.role,
+      };
+
+      // Store in localStorage
+      const existingUploads = localStorage.getItem(MATERIAL_UPLOADS_KEY);
+      const uploads = existingUploads ? JSON.parse(existingUploads) : [];
+      uploads.push(materialUpload);
+      localStorage.setItem(MATERIAL_UPLOADS_KEY, JSON.stringify(uploads));
+
+      console.log('Material upload saved:', materialUpload);
 
       // Simulate upload delay
       await new Promise(resolve => setTimeout(resolve, 1500));

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Upload, Camera, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,8 @@ interface WorkUploadFormProps {
   onUploadComplete: () => void;
 }
 
+const WORK_UPLOADS_KEY = 'contrust_dev_work_uploads';
+
 const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
   const [formData, setFormData] = useState({
     hours_worked: '',
@@ -23,6 +24,18 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [gpsCoords, setGpsCoords] = useState<string>('');
   const { toast } = useToast();
+
+  const getCurrentUser = () => {
+    const currentUser = localStorage.getItem('current_user');
+    if (currentUser) {
+      return JSON.parse(currentUser);
+    }
+    return {
+      id: userId,
+      name: 'Development Worker',
+      role: 'worker'
+    };
+  };
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -57,15 +70,30 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
     setIsUploading(true);
 
     try {
-      // Mock upload for development - no actual Supabase calls
-      console.log('Mock work upload:', {
-        worker_id: userId,
+      const currentUser = getCurrentUser();
+      
+      // Create work upload record
+      const workUpload = {
+        id: `work-${Math.random().toString(36).substr(2, 9)}`,
+        worker_id: currentUser.id,
         hours_worked: parseFloat(formData.hours_worked),
         work_date: formData.work_date,
         description: formData.description,
-        photo_file: selectedFile?.name,
+        photo_url: selectedFile ? `uploads/${selectedFile.name}` : undefined,
         gps_coordinates: gpsCoords,
-      });
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        user_name: currentUser.name,
+        user_role: currentUser.role,
+      };
+
+      // Store in localStorage
+      const existingUploads = localStorage.getItem(WORK_UPLOADS_KEY);
+      const uploads = existingUploads ? JSON.parse(existingUploads) : [];
+      uploads.push(workUpload);
+      localStorage.setItem(WORK_UPLOADS_KEY, JSON.stringify(uploads));
+
+      console.log('Work upload saved:', workUpload);
 
       // Simulate upload delay
       await new Promise(resolve => setTimeout(resolve, 1500));

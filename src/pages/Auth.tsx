@@ -1,65 +1,44 @@
 
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, Briefcase } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 import { UserRole } from '@/types';
 
-interface AuthProps {
-  isLogin?: boolean;
-}
-
-interface InvitationData {
-  id: string;
-  invitation_code: string;
-  role: UserRole;
-  email?: string;
-  project_name?: string;
-  admin_id: string;
-}
-
-// Storage key for development invitations
 const INVITATIONS_STORAGE_KEY = 'contrust_dev_invitations';
+const USER_ASSIGNMENTS_KEY = 'contrust_dev_user_assignments';
 
-const Auth = ({ isLogin = false }: AuthProps) => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+const Auth = () => {
   const [searchParams] = useSearchParams();
-  const [invitationData, setInvitationData] = useState<InvitationData | null>(null);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    name: '',
-    role: '' as UserRole,
-    invitation_code: '',
-  });
-
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [invitationCode, setInvitationCode] = useState(searchParams.get('invitation') || '');
+  const [validInvitation, setValidInvitation] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: '' as UserRole,
+  });
 
   useEffect(() => {
-    const invitationCode = searchParams.get('invitation');
-    if (invitationCode && !isLogin) {
-      setFormData(prev => ({ ...prev, invitation_code: invitationCode }));
-      validateInvitation(invitationCode);
+    if (invitationCode) {
+      validateInvitationCode(invitationCode);
     }
-  }, [searchParams, isLogin]);
+  }, [invitationCode]);
 
-  const validateInvitation = (code: string) => {
+  const validateInvitationCode = (code: string) => {
     try {
-      // Get invitations from localStorage for development
       const storedInvitations = localStorage.getItem(INVITATIONS_STORAGE_KEY);
       if (!storedInvitations) {
-        toast({
-          title: "Invalid Invitation",
-          description: "This invitation code is invalid or has expired.",
-          variant: "destructive",
-        });
+        setValidInvitation(null);
         return;
       }
 
@@ -70,80 +49,101 @@ const Auth = ({ isLogin = false }: AuthProps) => {
         new Date(inv.expires_at) > new Date()
       );
 
-      if (!invitation) {
-        toast({
-          title: "Invalid Invitation",
-          description: "This invitation code is invalid or has expired.",
-          variant: "destructive",
-        });
-        return;
+      if (invitation) {
+        setValidInvitation(invitation);
+        setFormData(prev => ({ 
+          ...prev, 
+          role: invitation.role,
+          email: invitation.email || prev.email 
+        }));
+      } else {
+        setValidInvitation(null);
       }
-
-      setInvitationData(invitation);
-      setFormData(prev => ({
-        ...prev,
-        role: invitation.role,
-        email: invitation.email || prev.email,
-      }));
-
-      toast({
-        title: "Invitation Found",
-        description: `You're invited to join as a ${invitation.role}${invitation.project_name ? ` for ${invitation.project_name}` : ''}`,
-      });
-    } catch (error: any) {
-      console.error('Invitation validation error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to validate invitation",
-        variant: "destructive",
-      });
+    } catch (error) {
+      console.error('Error validating invitation:', error);
+      setValidInvitation(null);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      if (isLogin) {
-        // Mock login for development
+      // Validate invitation if provided
+      if (invitationCode && !validInvitation) {
         toast({
-          title: "Welcome back!",
-          description: "You have been logged in to ConTrust.",
+          title: "Invalid invitation",
+          description: "The invitation code is invalid or has expired.",
+          variant: "destructive",
         });
-        navigate('/dashboard');
-      } else {
-        // Mock registration for development
-        if (formData.invitation_code && invitationData) {
-          // Mark invitation as used in localStorage
-          const storedInvitations = localStorage.getItem(INVITATIONS_STORAGE_KEY);
-          if (storedInvitations) {
-            const invitations = JSON.parse(storedInvitations);
-            const updatedInvitations = invitations.map((inv: any) => 
-              inv.invitation_code === formData.invitation_code 
-                ? { ...inv, status: 'used', used_at: new Date().toISOString(), used_by: 'dev-user-' + Math.random().toString(36).substr(2, 9) }
-                : inv
-            );
-            localStorage.setItem(INVITATIONS_STORAGE_KEY, JSON.stringify(updatedInvitations));
-          }
+        setIsLoading(false);
+        return;
+      }
 
-          toast({
-            title: "Registration Successful!",
-            description: `Welcome to ConTrust! You've joined as a ${invitationData.role}.`,
-          });
-        } else {
-          toast({
-            title: "Account created successfully!",
-            description: "Welcome to ConTrust!",
-          });
+      // Create user record
+      const userId = `user-${Math.random().toString(36).substr(2, 9)}`;
+      const newUser = {
+        id: userId,
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        created_at: new Date().toISOString(),
+        manager_id: validInvitation?.admin_id || null,
+      };
+
+      // Store user role for role switching
+      localStorage.setItem('dev_user_role', formData.role);
+      localStorage.setItem('current_user', JSON.stringify(newUser));
+
+      // If user signed up with invitation, mark it as used and create assignment
+      if (validInvitation) {
+        // Mark invitation as used
+        const storedInvitations = localStorage.getItem(INVITATIONS_STORAGE_KEY);
+        if (storedInvitations) {
+          const invitations = JSON.parse(storedInvitations);
+          const updatedInvitations = invitations.map((inv: any) => 
+            inv.invitation_code === invitationCode 
+              ? { ...inv, status: 'used', used_at: new Date().toISOString(), used_by: userId }
+              : inv
+          );
+          localStorage.setItem(INVITATIONS_STORAGE_KEY, JSON.stringify(updatedInvitations));
         }
 
-        navigate('/dashboard');
+        // Create user assignment linking to manager
+        const existingAssignments = localStorage.getItem(USER_ASSIGNMENTS_KEY);
+        const assignments = existingAssignments ? JSON.parse(existingAssignments) : [];
+        
+        const newAssignment = {
+          id: Math.random().toString(36).substr(2, 9),
+          user_id: userId,
+          admin_id: validInvitation.admin_id,
+          project_name: validInvitation.project_name,
+          assigned_at: new Date().toISOString(),
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          status: 'active',
+        };
+
+        assignments.push(newAssignment);
+        localStorage.setItem(USER_ASSIGNMENTS_KEY, JSON.stringify(assignments));
       }
-    } catch (error: any) {
+
       toast({
-        title: "Error",
-        description: error.message || "An error occurred during authentication",
+        title: "Account created successfully!",
+        description: validInvitation 
+          ? `Welcome to the team! You've been linked to ${validInvitation.manager_name || 'your manager'}.`
+          : "Welcome to ConTrust! You can now access the platform.",
+      });
+
+      // Redirect to dashboard
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      toast({
+        title: "Signup failed",
+        description: "There was an error creating your account.",
         variant: "destructive",
       });
     } finally {
@@ -151,149 +151,218 @@ const Auth = ({ isLogin = false }: AuthProps) => {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      // Mock login for development
+      const userId = `user-${Math.random().toString(36).substr(2, 9)}`;
+      const mockUser = {
+        id: userId,
+        name: 'Development User',
+        email: formData.email,
+        role: formData.role || 'manager',
+        created_at: new Date().toISOString(),
+      };
+
+      localStorage.setItem('dev_user_role', mockUser.role);
+      localStorage.setItem('current_user', JSON.stringify(mockUser));
+
+      toast({
+        title: "Logged in successfully!",
+        description: "Welcome back to ConTrust.",
+      });
+
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast({
+        title: "Login failed",
+        description: "Invalid credentials.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="font-playfair text-2xl font-bold text-gray-900">
-            {isLogin ? 'Welcome Back' : 'Create Account'}
-          </CardTitle>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-6">
+        <div className="text-center">
+          <h1 className="font-playfair text-3xl font-bold text-gray-900">ConTrust</h1>
           <p className="font-roboto text-gray-600 mt-2">
-            {isLogin 
-              ? 'Sign in to your ConTrust account' 
-              : invitationData 
-                ? `Join as ${invitationData.role}${invitationData.project_name ? ` for ${invitationData.project_name}` : ''}`
-                : 'Join ConTrust for secure construction payments'
-            }
+            {invitationCode ? 'Complete your invitation signup' : 'Sign in to your account'}
           </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="name" className="font-roboto font-medium">
-                  Full Name
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+        </div>
+
+        {invitationCode && validInvitation && (
+          <Alert>
+            <AlertDescription>
+              <div className="flex items-center justify-between">
+                <span>You've been invited as a <strong>{validInvitation.role}</strong></span>
+                <Badge variant="default" className="bg-green-500">Valid</Badge>
+              </div>
+              {validInvitation.project_name && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Project: {validInvitation.project_name}
+                </p>
+              )}
+              {validInvitation.manager_name && (
+                <p className="text-sm text-gray-600">
+                  Invited by: {validInvitation.manager_name}
+                </p>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {invitationCode && !validInvitation && (
+          <Alert variant="destructive">
+            <AlertDescription>
+              Invalid or expired invitation code. Please check with your project manager.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{invitationCode ? 'Complete Signup' : 'Sign In'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {invitationCode ? (
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div>
+                  <Label htmlFor="invitation">Invitation Code</Label>
                   <Input
-                    id="name"
-                    type="text"
-                    placeholder="Enter your full name"
-                    className="pl-10"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    required={!isLogin}
+                    id="invitation"
+                    value={invitationCode}
+                    onChange={(e) => setInvitationCode(e.target.value)}
+                    placeholder="Enter invitation code"
+                    required
                   />
                 </div>
-              </div>
-            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="font-roboto font-medium">
-                Email Address
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  className="pl-10"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  disabled={!!invitationData?.email}
-                  required
-                />
-              </div>
-            </div>
+                <div>
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Your full name"
+                    required
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="font-roboto font-medium">
-                Password
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  className="pl-10 pr-10"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="your@email.com"
+                    required
+                  />
+                </div>
 
-            {!isLogin && !invitationData && (
-              <div className="space-y-2">
-                <Label htmlFor="role" className="font-roboto font-medium">
-                  Role
-                </Label>
-                <div className="relative">
-                  <Briefcase className="absolute left-3 top-3 h-4 w-4 text-gray-400 z-10" />
-                  <Select onValueChange={(value) => handleInputChange('role', value)} required>
-                    <SelectTrigger className="pl-10">
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="Create a secure password"
+                    required
+                  />
+                </div>
+
+                {validInvitation && (
+                  <div>
+                    <Label>Role</Label>
+                    <div className="mt-1">
+                      <Badge variant="default" className="bg-blue-500 capitalize">
+                        {validInvitation.role}
+                      </Badge>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Role assigned by invitation
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <Button type="submit" disabled={isLoading || !validInvitation} className="w-full">
+                  {isLoading ? 'Creating Account...' : 'Complete Signup'}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="your@email.com"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="Your password"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="role">Role (Development)</Label>
+                  <Select onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as UserRole }))}>
+                    <SelectTrigger>
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="manager">Project Manager</SelectItem>
                       <SelectItem value="worker">Construction Worker</SelectItem>
                       <SelectItem value="supplier">Material Supplier</SelectItem>
-                      <SelectItem value="manager">Project Manager</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
+
+                <Button type="submit" disabled={isLoading} className="w-full">
+                  {isLoading ? 'Signing In...' : 'Sign In'}
+                </Button>
+              </form>
             )}
 
-            {!isLogin && formData.invitation_code && (
-              <div className="space-y-2">
-                <Label className="font-roboto font-medium">Invitation Code</Label>
-                <Input
-                  value={formData.invitation_code}
-                  disabled
-                  className="bg-gray-100"
-                />
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary/90"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="font-roboto text-sm text-gray-600">
-              {isLogin ? "Don't have an account? " : "Already have an account? "}
-              <Link
-                to={isLogin ? '/signup' : '/login'}
-                className="text-primary hover:text-primary/80 font-medium"
-              >
-                {isLogin ? 'Sign up' : 'Sign in'}
-              </Link>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="mt-4 text-center">
+              <p className="text-sm text-gray-600">
+                {invitationCode ? (
+                  <>
+                    Already have an account?{' '}
+                    <button
+                      onClick={() => navigate('/auth')}
+                      className="text-primary hover:underline"
+                    >
+                      Sign in here
+                    </button>
+                  </>
+                ) : (
+                  'Development mode - Use any email/password combination'
+                )}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
