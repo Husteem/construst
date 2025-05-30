@@ -8,7 +8,8 @@ const Dashboard = () => {
     id: 'dev-user-1',
     name: 'Development User',
     email: 'dev@contrust.com',
-    role: 'manager' as const
+    role: 'manager' as const,
+    created_at: new Date().toISOString()
   };
 
   return (
