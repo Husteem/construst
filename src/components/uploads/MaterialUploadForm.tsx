@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 interface MaterialUploadFormProps {
   userId: string;
@@ -54,48 +53,24 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
     }
   };
 
-  const uploadFile = async (file: File): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${Date.now()}.${fileExt}`;
-    
-    const { error } = await supabase.storage
-      .from('uploads')
-      .upload(fileName, file);
-
-    if (error) {
-      throw error;
-    }
-
-    const { data } = supabase.storage
-      .from('uploads')
-      .getPublicUrl(fileName);
-
-    return data.publicUrl;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUploading(true);
 
     try {
-      let photoUrl = null;
-      if (selectedFile) {
-        photoUrl = await uploadFile(selectedFile);
-      }
+      // Mock upload for development - no actual Supabase calls
+      console.log('Mock material upload:', {
+        supplier_id: userId,
+        material_type: formData.material_type,
+        quantity: parseFloat(formData.quantity),
+        delivery_date: formData.delivery_date,
+        description: formData.description,
+        photo_file: selectedFile?.name,
+        gps_coordinates: gpsCoords,
+      });
 
-      const { error } = await (supabase as any)
-        .from('material_uploads')
-        .insert({
-          supplier_id: userId,
-          material_type: formData.material_type,
-          quantity: parseFloat(formData.quantity),
-          delivery_date: formData.delivery_date,
-          description: formData.description,
-          photo_url: photoUrl,
-          gps_coordinates: gpsCoords,
-        });
-
-      if (error) throw error;
+      // Simulate upload delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       toast({
         title: "Material uploaded successfully!",
@@ -112,6 +87,7 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
       setGpsCoords('');
       onUploadComplete();
     } catch (error) {
+      console.error('Upload error:', error);
       toast({
         title: "Upload failed",
         description: "There was an error uploading your material record.",

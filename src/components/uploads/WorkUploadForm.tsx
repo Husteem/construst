@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 interface WorkUploadFormProps {
   userId: string;
@@ -53,47 +52,23 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
     }
   };
 
-  const uploadFile = async (file: File): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${Date.now()}.${fileExt}`;
-    
-    const { error } = await supabase.storage
-      .from('uploads')
-      .upload(fileName, file);
-
-    if (error) {
-      throw error;
-    }
-
-    const { data } = supabase.storage
-      .from('uploads')
-      .getPublicUrl(fileName);
-
-    return data.publicUrl;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUploading(true);
 
     try {
-      let photoUrl = null;
-      if (selectedFile) {
-        photoUrl = await uploadFile(selectedFile);
-      }
+      // Mock upload for development - no actual Supabase calls
+      console.log('Mock work upload:', {
+        worker_id: userId,
+        hours_worked: parseFloat(formData.hours_worked),
+        work_date: formData.work_date,
+        description: formData.description,
+        photo_file: selectedFile?.name,
+        gps_coordinates: gpsCoords,
+      });
 
-      const { error } = await (supabase as any)
-        .from('work_uploads')
-        .insert({
-          worker_id: userId,
-          hours_worked: parseFloat(formData.hours_worked),
-          work_date: formData.work_date,
-          description: formData.description,
-          photo_url: photoUrl,
-          gps_coordinates: gpsCoords,
-        });
-
-      if (error) throw error;
+      // Simulate upload delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       toast({
         title: "Work progress uploaded!",
@@ -109,6 +84,7 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
       setGpsCoords('');
       onUploadComplete();
     } catch (error) {
+      console.error('Upload error:', error);
       toast({
         title: "Upload failed",
         description: "There was an error uploading your work record.",

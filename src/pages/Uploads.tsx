@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { User } from '@/types';
 import MaterialUploadForm from '@/components/uploads/MaterialUploadForm';
 import WorkUploadForm from '@/components/uploads/WorkUploadForm';
@@ -11,17 +10,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 const Uploads = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('contrust_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      navigate('/login');
+    // Mock user for development - no authentication required
+    const mockUser: User = {
+      id: 'dev-user-' + Math.random().toString(36).substr(2, 9),
+      name: 'Development User',
+      email: 'dev@example.com',
+      role: 'worker', // Default role, can be changed based on current user context
+      created_at: new Date().toISOString(),
+    };
+
+    // Check if there's a stored user role from previous navigation
+    const storedRole = localStorage.getItem('dev_user_role');
+    if (storedRole && (storedRole === 'worker' || storedRole === 'supplier' || storedRole === 'manager')) {
+      mockUser.role = storedRole as any;
     }
+
+    setUser(mockUser);
     setIsLoading(false);
-  }, [navigate]);
+  }, []);
 
   if (isLoading) {
     return (
@@ -35,11 +43,18 @@ const Uploads = () => {
   }
 
   if (!user) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="font-roboto text-gray-600">Unable to load user data</p>
+        </div>
+      </div>
+    );
   }
 
   const handleUploadComplete = () => {
     // Refresh or update any relevant state
+    console.log('Upload completed successfully');
   };
 
   return (
@@ -51,6 +66,9 @@ const Uploads = () => {
           </h1>
           <p className="font-roboto text-gray-600 mt-2">
             Upload work progress, materials, and manage your wallet settings
+          </p>
+          <p className="font-roboto text-sm text-blue-600 mt-1">
+            Current role: {user.role} | Development Mode
           </p>
         </div>
 
