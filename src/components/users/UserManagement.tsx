@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +8,7 @@ import { Users, UserCheck, Package } from 'lucide-react';
 interface AssignedUser {
   id: string;
   user_id: string;
-  admin_id: string; // Added this property
+  admin_id: string;
   project_name?: string;
   assigned_at: string;
   name: string;
@@ -43,13 +44,22 @@ const UserManagement = () => {
   const fetchAssignedUsers = async () => {
     try {
       const managerId = getCurrentManagerId();
+      console.log('Current manager ID:', managerId);
+      
       const storedAssignments = localStorage.getItem(USER_ASSIGNMENTS_KEY);
+      console.log('Stored assignments:', storedAssignments);
       
       if (storedAssignments) {
         const allAssignments = JSON.parse(storedAssignments);
-        const managerAssignments = allAssignments.filter((assignment: AssignedUser) => 
-          assignment.admin_id === managerId
-        );
+        console.log('All assignments:', allAssignments);
+        
+        // Filter assignments for current manager
+        const managerAssignments = allAssignments.filter((assignment: AssignedUser) => {
+          console.log(`Checking assignment ${assignment.id}: admin_id=${assignment.admin_id}, managerId=${managerId}`);
+          return assignment.admin_id === managerId;
+        });
+        
+        console.log('Manager assignments:', managerAssignments);
         
         setAssignedUsers(managerAssignments);
         setStats({
@@ -59,6 +69,7 @@ const UserManagement = () => {
         });
       } else {
         // No assignments found
+        console.log('No assignments found in localStorage');
         setAssignedUsers([]);
         setStats({
           totalUsers: 0,

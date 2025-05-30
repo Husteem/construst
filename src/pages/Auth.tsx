@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,8 +19,15 @@ const Auth = ({ isLogin }: AuthProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    // Pre-fill invitation code from URL if present
+    const inviteParam = searchParams.get('invitation');
+    if (inviteParam) {
+      setInvitationCode(inviteParam);
+    }
+
     // Set mock invitations for development purposes
     const mockInvitations = [
       {
@@ -50,7 +58,7 @@ const Auth = ({ isLogin }: AuthProps) => {
     if (!localStorage.getItem('contrust_dev_invitations')) {
       localStorage.setItem('contrust_dev_invitations', JSON.stringify(mockInvitations));
     }
-  }, []);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,11 +90,13 @@ const Auth = ({ isLogin }: AuthProps) => {
           const invitationsData = localStorage.getItem('contrust_dev_invitations');
           if (invitationsData) {
             const invitations = JSON.parse(invitationsData);
-            const invitation = invitations.find((inv: any) => 
+            const invitationIndex = invitations.findIndex((inv: any) => 
               inv.invitation_code === invitationCode && inv.status === 'pending'
             );
 
-            if (invitation) {
+            if (invitationIndex !== -1) {
+              const invitation = invitations[invitationIndex];
+              
               // Create user with role from invitation
               const newUser = {
                 id: 'user-' + Date.now(),
@@ -96,10 +106,13 @@ const Auth = ({ isLogin }: AuthProps) => {
                 created_at: new Date().toISOString()
               };
 
-              // Mark invitation as used
-              invitation.status = 'used';
-              invitation.used_by = newUser.id;
-              invitation.used_at = new Date().toISOString();
+              // Mark invitation as used and update the array
+              invitations[invitationIndex] = {
+                ...invitation,
+                status: 'used',
+                used_by: newUser.id,
+                used_at: new Date().toISOString()
+              };
               localStorage.setItem('contrust_dev_invitations', JSON.stringify(invitations));
 
               // Create user assignment
@@ -124,6 +137,10 @@ const Auth = ({ isLogin }: AuthProps) => {
               localStorage.setItem('current_user', JSON.stringify(newUser));
               localStorage.setItem('dev_user_role', newUser.role);
 
+              console.log('User created:', newUser);
+              console.log('Assignment created:', newAssignment);
+              console.log('Invitation updated:', invitations[invitationIndex]);
+
               toast({
                 title: "Account created successfully",
                 description: `Welcome ${name}! You've joined as a ${invitation.role}.`,
@@ -141,7 +158,7 @@ const Auth = ({ isLogin }: AuthProps) => {
         } else {
           // Regular signup without invitation (creates manager)
           const newUser = {
-            id: 'user-' + Date.now(),
+            id: 'manager-' + Date.now(),
             email,
             name,
             role: 'manager',

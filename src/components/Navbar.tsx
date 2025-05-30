@@ -1,8 +1,9 @@
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu, X, User } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Menu, X, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 interface NavbarProps {
   user?: any;
@@ -11,11 +12,29 @@ interface NavbarProps {
 
 const Navbar = ({ user, onLogout }: NavbarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  // Mock user for development
-  const mockUser = {
-    name: 'Development User',
-    role: 'manager'
+  useEffect(() => {
+    // Get current user from localStorage
+    const storedUser = localStorage.getItem('current_user');
+    if (storedUser) {
+      setCurrentUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  const handleSignOut = () => {
+    localStorage.removeItem('current_user');
+    localStorage.removeItem('dev_user_role');
+    setCurrentUser(null);
+    
+    toast({
+      title: "Signed out",
+      description: "You have been signed out successfully",
+    });
+    
+    navigate('/');
   };
 
   return (
@@ -42,34 +61,66 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
             >
               Home
             </Link>
-            <Link 
-              to="/dashboard" 
-              className="hover:text-accent transition-colors font-roboto text-white"
-            >
-              Dashboard
-            </Link>
-            <Link 
-              to="/projects" 
-              className="hover:text-accent transition-colors font-roboto text-white"
-            >
-              Projects
-            </Link>
-            <Link 
-              to="/uploads" 
-              className="hover:text-accent transition-colors font-roboto text-white"
-            >
-              Uploads
-            </Link>
+            {currentUser && (
+              <>
+                <Link 
+                  to="/dashboard" 
+                  className="hover:text-accent transition-colors font-roboto text-white"
+                >
+                  Dashboard
+                </Link>
+                <Link 
+                  to="/projects" 
+                  className="hover:text-accent transition-colors font-roboto text-white"
+                >
+                  Projects
+                </Link>
+                <Link 
+                  to="/uploads" 
+                  className="hover:text-accent transition-colors font-roboto text-white"
+                >
+                  Uploads
+                </Link>
+              </>
+            )}
             <Link 
               to="/docs" 
               className="hover:text-accent transition-colors font-roboto text-white"
             >
               Documentation
             </Link>
-            <div className="flex items-center space-x-2">
-              <User size={16} />
-              <span className="font-roboto text-sm">{mockUser.name}</span>
-            </div>
+            
+            {currentUser ? (
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <User size={16} />
+                  <span className="font-roboto text-sm">{currentUser.name}</span>
+                  <span className="text-xs bg-gray-700 px-2 py-1 rounded">{currentUser.role}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="text-white hover:bg-red-600 hover:text-white"
+                >
+                  <LogOut size={16} className="mr-1" />
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Link to="/login">
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-accent hover:text-primary">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/signup">
+                  <Button size="sm" className="bg-accent text-primary hover:bg-accent/90">
+                    Sign Up
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -96,27 +147,31 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
               >
                 Home
               </Link>
-              <Link 
-                to="/dashboard" 
-                className="hover:text-accent transition-colors font-roboto text-white"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Dashboard
-              </Link>
-              <Link 
-                to="/projects" 
-                className="hover:text-accent transition-colors font-roboto text-white"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Projects
-              </Link>
-              <Link 
-                to="/uploads" 
-                className="hover:text-accent transition-colors font-roboto text-white"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Uploads
-              </Link>
+              {currentUser && (
+                <>
+                  <Link 
+                    to="/dashboard" 
+                    className="hover:text-accent transition-colors font-roboto text-white"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link 
+                    to="/projects" 
+                    className="hover:text-accent transition-colors font-roboto text-white"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Projects
+                  </Link>
+                  <Link 
+                    to="/uploads" 
+                    className="hover:text-accent transition-colors font-roboto text-white"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Uploads
+                  </Link>
+                </>
+              )}
               <Link 
                 to="/docs" 
                 className="hover:text-accent transition-colors font-roboto text-white"
@@ -124,10 +179,41 @@ const Navbar = ({ user, onLogout }: NavbarProps) => {
               >
                 Documentation
               </Link>
-              <div className="flex items-center space-x-2 text-white">
-                <User size={16} />
-                <span className="font-roboto text-sm">{mockUser.name}</span>
-              </div>
+              
+              {currentUser ? (
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center space-x-2 text-white">
+                    <User size={16} />
+                    <span className="font-roboto text-sm">{currentUser.name}</span>
+                    <span className="text-xs bg-gray-700 px-2 py-1 rounded">{currentUser.role}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      handleSignOut();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="text-white hover:bg-red-600 hover:text-white justify-start"
+                  >
+                    <LogOut size={16} className="mr-1" />
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col space-y-2">
+                  <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button variant="ghost" size="sm" className="text-white hover:bg-accent hover:text-primary w-full justify-start">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button size="sm" className="bg-accent text-primary hover:bg-accent/90 w-full">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         )}
