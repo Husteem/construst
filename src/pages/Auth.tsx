@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 
 interface AuthProps {
   isLogin?: boolean;
@@ -23,6 +22,9 @@ interface InvitationData {
   project_name?: string;
   admin_id: string;
 }
+
+// Storage key for development invitations
+const INVITATIONS_STORAGE_KEY = 'contrust_dev_invitations';
 
 const Auth = ({ isLogin = false }: AuthProps) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -48,17 +50,11 @@ const Auth = ({ isLogin = false }: AuthProps) => {
     }
   }, [searchParams, isLogin]);
 
-  const validateInvitation = async (code: string) => {
+  const validateInvitation = (code: string) => {
     try {
-      const { data, error } = await supabase
-        .from('invitations')
-        .select('*')
-        .eq('invitation_code', code)
-        .eq('status', 'pending')
-        .gt('expires_at', new Date().toISOString())
-        .single();
-
-      if (error || !data) {
+      // Get invitations from localStorage for development
+      const storedInvitations = localStorage.getItem(INVITATIONS_STORAGE_KEY);
+      if (!storedInvitations) {
         toast({
           title: "Invalid Invitation",
           description: "This invitation code is invalid or has expired.",
@@ -67,16 +63,32 @@ const Auth = ({ isLogin = false }: AuthProps) => {
         return;
       }
 
-      setInvitationData(data);
+      const invitations = JSON.parse(storedInvitations);
+      const invitation = invitations.find((inv: any) => 
+        inv.invitation_code === code && 
+        inv.status === 'pending' && 
+        new Date(inv.expires_at) > new Date()
+      );
+
+      if (!invitation) {
+        toast({
+          title: "Invalid Invitation",
+          description: "This invitation code is invalid or has expired.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setInvitationData(invitation);
       setFormData(prev => ({
         ...prev,
-        role: data.role,
-        email: data.email || prev.email,
+        role: invitation.role,
+        email: invitation.email || prev.email,
       }));
 
       toast({
         title: "Invitation Found",
-        description: `You're invited to join as a ${data.role}${data.project_name ? ` for ${data.project_name}` : ''}`,
+        description: `You're invited to join as a ${invitation.role}${invitation.project_name ? ` for ${invitation.project_name}` : ''}`,
       });
     } catch (error: any) {
       console.error('Invitation validation error:', error);
@@ -94,61 +106,25 @@ const Auth = ({ isLogin = false }: AuthProps) => {
 
     try {
       if (isLogin) {
-        // Handle login with Supabase
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-
-        if (error) throw error;
-
+        // Mock login for development
         toast({
           title: "Welcome back!",
           description: "You have been logged in to ConTrust.",
         });
-
         navigate('/dashboard');
       } else {
-        // Handle registration with Supabase
-        const { data, error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              name: formData.name,
-              role: invitationData ? invitationData.role : formData.role,
-            }
-          }
-        });
-
-        if (error) throw error;
-
-        // If registration with invitation, mark invitation as used and create user assignment
-        if (formData.invitation_code && invitationData && data.user) {
-          const { error: invitationError } = await supabase
-            .from('invitations')
-            .update({ 
-              status: 'used', 
-              used_at: new Date().toISOString(),
-              used_by: data.user.id 
-            })
-            .eq('id', invitationData.id);
-
-          if (invitationError) {
-            console.error('Error updating invitation:', invitationError);
-          }
-
-          // Create user assignment
-          const { error: assignmentError } = await supabase
-            .from('user_assignments')
-            .insert({
-              admin_id: invitationData.admin_id,
-              user_id: data.user.id,
-              project_name: invitationData.project_name,
-            });
-
-          if (assignmentError) {
-            console.error('Error creating user assignment:', assignmentError);
+        // Mock registration for development
+        if (formData.invitation_code && invitationData) {
+          // Mark invitation as used in localStorage
+          const storedInvitations = localStorage.getItem(INVITATIONS_STORAGE_KEY);
+          if (storedInvitations) {
+            const invitations = JSON.parse(storedInvitations);
+            const updatedInvitations = invitations.map((inv: any) => 
+              inv.invitation_code === formData.invitation_code 
+                ? { ...inv, status: 'used', used_at: new Date().toISOString(), used_by: 'dev-user-' + Math.random().toString(36).substr(2, 9) }
+                : inv
+            );
+            localStorage.setItem(INVITATIONS_STORAGE_KEY, JSON.stringify(updatedInvitations));
           }
 
           toast({
@@ -158,7 +134,7 @@ const Auth = ({ isLogin = false }: AuthProps) => {
         } else {
           toast({
             title: "Account created successfully!",
-            description: "Please check your email to verify your account.",
+            description: "Welcome to ConTrust!",
           });
         }
 

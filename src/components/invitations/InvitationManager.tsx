@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,11 @@ interface Invitation {
   created_at: string;
   used_at?: string;
   used_by?: string;
+  admin_id: string;
 }
+
+// Store invitations in localStorage for development
+const INVITATIONS_STORAGE_KEY = 'contrust_dev_invitations';
 
 const InvitationManager = () => {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -40,35 +43,43 @@ const InvitationManager = () => {
     fetchInvitations();
   }, []);
 
-  const fetchInvitations = async () => {
+  const fetchInvitations = () => {
     setIsLoading(true);
     try {
-      // Mock data for development - replace with real Supabase call when auth is ready
-      const mockInvitations: Invitation[] = [
-        {
-          id: '1',
-          invitation_code: 'INV-ABC12345',
-          role: 'worker',
-          email: 'worker@example.com',
-          project_name: 'Building Construction Phase 1',
-          status: 'pending',
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          invitation_code: 'INV-DEF67890',
-          role: 'supplier',
-          email: 'supplier@example.com',
-          project_name: 'Road Infrastructure',
-          status: 'used',
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString(),
-          used_at: new Date().toISOString(),
-        },
-      ];
-
-      setInvitations(mockInvitations);
+      // Get invitations from localStorage for development
+      const storedInvitations = localStorage.getItem(INVITATIONS_STORAGE_KEY);
+      if (storedInvitations) {
+        setInvitations(JSON.parse(storedInvitations));
+      } else {
+        // Initialize with some sample data
+        const sampleInvitations: Invitation[] = [
+          {
+            id: '1',
+            invitation_code: 'INV-ABC12345',
+            role: 'worker',
+            email: 'worker@example.com',
+            project_name: 'Building Construction Phase 1',
+            status: 'pending',
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            created_at: new Date().toISOString(),
+            admin_id: 'dev-user-1',
+          },
+          {
+            id: '2',
+            invitation_code: 'INV-DEF67890',
+            role: 'supplier',
+            email: 'supplier@example.com',
+            project_name: 'Road Infrastructure',
+            status: 'used',
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            created_at: new Date().toISOString(),
+            used_at: new Date().toISOString(),
+            admin_id: 'dev-user-1',
+          },
+        ];
+        setInvitations(sampleInvitations);
+        localStorage.setItem(INVITATIONS_STORAGE_KEY, JSON.stringify(sampleInvitations));
+      }
     } catch (error: any) {
       console.error('Error fetching invitations:', error);
       toast({
@@ -95,8 +106,8 @@ const InvitationManager = () => {
 
     setIsLoading(true);
     try {
-      // Generate mock invitation for development
-      const mockInvitation: Invitation = {
+      // Create new invitation
+      const newInvitation: Invitation = {
         id: Math.random().toString(36).substr(2, 9),
         invitation_code: `INV-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
         role: formData.role,
@@ -105,9 +116,14 @@ const InvitationManager = () => {
         status: 'pending',
         expires_at: new Date(Date.now() + parseInt(formData.expires_in_days) * 24 * 60 * 60 * 1000).toISOString(),
         created_at: new Date().toISOString(),
+        admin_id: 'dev-user-1', // Mock admin ID for development
       };
 
-      setInvitations(prev => [mockInvitation, ...prev]);
+      const updatedInvitations = [newInvitation, ...invitations];
+      setInvitations(updatedInvitations);
+      
+      // Store in localStorage for development
+      localStorage.setItem(INVITATIONS_STORAGE_KEY, JSON.stringify(updatedInvitations));
 
       // Reset form
       setFormData({
@@ -152,12 +168,11 @@ const InvitationManager = () => {
 
   const revokeInvitation = async (id: string) => {
     try {
-      // Mock revoke for development
-      setInvitations(prev => 
-        prev.map(inv => 
-          inv.id === id ? { ...inv, status: 'revoked' as const } : inv
-        )
+      const updatedInvitations = invitations.map(inv => 
+        inv.id === id ? { ...inv, status: 'revoked' as const } : inv
       );
+      setInvitations(updatedInvitations);
+      localStorage.setItem(INVITATIONS_STORAGE_KEY, JSON.stringify(updatedInvitations));
 
       toast({
         title: "Invitation Revoked",
