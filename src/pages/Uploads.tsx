@@ -12,22 +12,31 @@ const Uploads = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Mock user for development - no authentication required
-    const mockUser: User = {
-      id: 'dev-user-' + Math.random().toString(36).substr(2, 9),
-      name: 'Development User',
-      email: 'dev@example.com',
-      role: 'worker', // Default role, can be changed based on current user context
-      created_at: new Date().toISOString(),
-    };
+    // Get current user from localStorage
+    const storedUser = localStorage.getItem('current_user');
+    
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+    } else {
+      // Mock user for development if no stored user
+      const mockUser: User = {
+        id: 'dev-user-' + Math.random().toString(36).substr(2, 9),
+        name: 'Development User',
+        email: 'dev@example.com',
+        role: 'worker',
+        created_at: new Date().toISOString(),
+      };
 
-    // Check if there's a stored user role from previous navigation
-    const storedRole = localStorage.getItem('dev_user_role');
-    if (storedRole && (storedRole === 'worker' || storedRole === 'supplier' || storedRole === 'manager')) {
-      mockUser.role = storedRole as any;
+      // Check if there's a stored user role from previous navigation
+      const storedRole = localStorage.getItem('dev_user_role');
+      if (storedRole && (storedRole === 'worker' || storedRole === 'supplier' || storedRole === 'manager')) {
+        mockUser.role = storedRole as any;
+      }
+
+      setUser(mockUser);
     }
-
-    setUser(mockUser);
+    
     setIsLoading(false);
   }, []);
 
@@ -68,7 +77,7 @@ const Uploads = () => {
             Upload work progress, materials, and manage your wallet settings
           </p>
           <p className="font-roboto text-sm text-blue-600 mt-1">
-            Current role: {user.role} | Development Mode
+            Current role: {user.role} | User ID: {user.id} | Name: {user.name}
           </p>
         </div>
 

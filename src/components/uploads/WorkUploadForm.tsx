@@ -125,34 +125,6 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
     }
   };
 
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const coords = `${position.coords.latitude},${position.coords.longitude}`;
-          setGpsCoords(coords);
-          toast({
-            title: "Location captured",
-            description: "GPS coordinates recorded for verification.",
-          });
-        },
-        (error) => {
-          toast({
-            title: "Location error",
-            description: "Could not get current location.",
-            variant: "destructive",
-          });
-        }
-      );
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
   return (
     <Card>
       <CardHeader>

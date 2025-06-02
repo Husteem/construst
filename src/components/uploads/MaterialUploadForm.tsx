@@ -128,34 +128,6 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
     }
   };
 
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const coords = `${position.coords.latitude},${position.coords.longitude}`;
-          setGpsCoords(coords);
-          toast({
-            title: "Location captured",
-            description: "GPS coordinates recorded for verification.",
-          });
-        },
-        (error) => {
-          toast({
-            title: "Location error",
-            description: "Could not get current location.",
-            variant: "destructive",
-          });
-        }
-      );
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -171,9 +143,10 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
               <Label htmlFor="material_type">Material Type</Label>
               <Input
                 id="material_type"
+                type="text"
                 value={formData.material_type}
                 onChange={(e) => setFormData(prev => ({ ...prev, material_type: e.target.value }))}
-                placeholder="e.g., Cement, Steel bars"
+                placeholder="e.g., Cement, Steel, Bricks"
                 required
               />
             </div>
@@ -182,10 +155,10 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
               <Input
                 id="quantity"
                 type="number"
-                step="0.01"
+                step="0.1"
                 value={formData.quantity}
                 onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
-                placeholder="50"
+                placeholder="e.g., 50"
                 required
               />
             </div>
@@ -203,7 +176,7 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
           </div>
 
           <div>
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Description (Optional)</Label>
             <Textarea
               id="description"
               value={formData.description}
