@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Upload, Camera, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -73,10 +74,10 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
     try {
       const currentUser = getCurrentUser();
       
-      // Create material upload record
+      // Create material upload record with consistent user ID
       const materialUpload = {
         id: `material-${Math.random().toString(36).substr(2, 9)}`,
-        supplier_id: currentUser.id,
+        supplier_id: currentUser.id, // Use the actual user ID from localStorage
         material_type: formData.material_type,
         quantity: parseFloat(formData.quantity),
         delivery_date: formData.delivery_date,
@@ -96,6 +97,7 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
       localStorage.setItem(MATERIAL_UPLOADS_KEY, JSON.stringify(uploads));
 
       console.log('Material upload saved:', materialUpload);
+      console.log('Current user ID:', currentUser.id);
 
       // Simulate upload delay
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -123,6 +125,34 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = `${position.coords.latitude},${position.coords.longitude}`;
+          setGpsCoords(coords);
+          toast({
+            title: "Location captured",
+            description: "GPS coordinates recorded for verification.",
+          });
+        },
+        (error) => {
+          toast({
+            title: "Location error",
+            description: "Could not get current location.",
+            variant: "destructive",
+          });
+        }
+      );
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
     }
   };
 

@@ -1,15 +1,18 @@
 
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthProps {
   isLogin: boolean;
 }
+
+const INVITATIONS_KEY = 'contrust_dev_invitations';
+const USER_ASSIGNMENTS_KEY = 'contrust_dev_user_assignments';
 
 const Auth = ({ isLogin }: AuthProps) => {
   const [email, setEmail] = useState('');
@@ -17,48 +20,8 @@ const Auth = ({ isLogin }: AuthProps) => {
   const [name, setName] = useState('');
   const [invitationCode, setInvitationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
-
-  useEffect(() => {
-    // Pre-fill invitation code from URL if present
-    const inviteParam = searchParams.get('invitation');
-    if (inviteParam) {
-      setInvitationCode(inviteParam);
-    }
-
-    // Set mock invitations for development purposes
-    const mockInvitations = [
-      {
-        id: 'inv-1',
-        admin_id: 'manager-default',
-        email: 'worker1@example.com',
-        role: 'worker',
-        invitation_code: 'WORKER123',
-        status: 'pending',
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        created_at: new Date().toISOString(),
-        project_name: 'Construction Project Alpha'
-      },
-      {
-        id: 'inv-2',
-        admin_id: 'manager-default',
-        email: 'supplier1@example.com',
-        role: 'supplier',
-        invitation_code: 'SUPPLIER456',
-        status: 'pending',
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        created_at: new Date().toISOString(),
-        project_name: 'Construction Project Alpha'
-      },
-    ];
-
-    // Initialize invitations in local storage if not present
-    if (!localStorage.getItem('contrust_dev_invitations')) {
-      localStorage.setItem('contrust_dev_invitations', JSON.stringify(mockInvitations));
-    }
-  }, [searchParams]);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,120 +29,133 @@ const Auth = ({ isLogin }: AuthProps) => {
 
     try {
       if (isLogin) {
-        // Mock login logic
+        // Handle login
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // For development, create a mock user
         const mockUser = {
-          id: 'mock-user-' + Date.now(),
-          email,
-          name: email.split('@')[0],
+          id: 'manager-' + Math.random().toString(36).substr(2, 9),
+          name: 'Development Manager',
+          email: email,
           role: 'manager',
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         };
 
         localStorage.setItem('current_user', JSON.stringify(mockUser));
         localStorage.setItem('dev_user_role', 'manager');
 
         toast({
-          title: "Login successful",
+          title: "Signed in successfully",
           description: "Welcome back!",
         });
 
         navigate('/dashboard');
       } else {
-        // Handle signup with invitation code
-        if (invitationCode) {
-          const invitationsData = localStorage.getItem('contrust_dev_invitations');
-          if (invitationsData) {
-            const invitations = JSON.parse(invitationsData);
-            const invitationIndex = invitations.findIndex((inv: any) => 
-              inv.invitation_code === invitationCode && inv.status === 'pending'
-            );
-
-            if (invitationIndex !== -1) {
-              const invitation = invitations[invitationIndex];
-              
-              // Create user with role from invitation
-              const newUser = {
-                id: 'user-' + Date.now(),
-                email,
-                name,
-                role: invitation.role,
-                created_at: new Date().toISOString()
-              };
-
-              // Mark invitation as used and update the array
-              invitations[invitationIndex] = {
-                ...invitation,
-                status: 'used',
-                used_by: newUser.id,
-                used_at: new Date().toISOString()
-              };
-              localStorage.setItem('contrust_dev_invitations', JSON.stringify(invitations));
-
-              // Create user assignment
-              const assignmentsData = localStorage.getItem('contrust_dev_user_assignments') || '[]';
-              const assignments = JSON.parse(assignmentsData);
-              
-              const newAssignment = {
-                id: 'assignment-' + Date.now(),
-                admin_id: invitation.admin_id,
-                user_id: newUser.id,
-                assigned_at: new Date().toISOString(),
-                project_name: invitation.project_name,
-                name: newUser.name,
-                email: newUser.email,
-                role: newUser.role,
-                status: 'active'
-              };
-
-              assignments.push(newAssignment);
-              localStorage.setItem('contrust_dev_user_assignments', JSON.stringify(assignments));
-
-              localStorage.setItem('current_user', JSON.stringify(newUser));
-              localStorage.setItem('dev_user_role', newUser.role);
-
-              console.log('User created:', newUser);
-              console.log('Assignment created:', newAssignment);
-              console.log('Invitation updated:', invitations[invitationIndex]);
-
-              toast({
-                title: "Account created successfully",
-                description: `Welcome ${name}! You've joined as a ${invitation.role}.`,
-              });
-
-              navigate('/dashboard');
-            } else {
-              toast({
-                title: "Invalid invitation code",
-                description: "Please check your invitation code and try again.",
-                variant: "destructive",
-              });
-            }
-          }
-        } else {
-          // Regular signup without invitation (creates manager)
-          const newUser = {
-            id: 'manager-' + Date.now(),
-            email,
-            name,
-            role: 'manager',
-            created_at: new Date().toISOString()
-          };
-
-          localStorage.setItem('current_user', JSON.stringify(newUser));
-          localStorage.setItem('dev_user_role', 'manager');
-
+        // Handle signup with invitation
+        if (!invitationCode) {
           toast({
-            title: "Account created successfully",
-            description: `Welcome ${name}!`,
+            title: "Invitation code required",
+            description: "Please enter your invitation code to sign up.",
+            variant: "destructive",
           });
-
-          navigate('/dashboard');
+          return;
         }
+
+        // Get invitations from localStorage
+        const storedInvitations = localStorage.getItem(INVITATIONS_KEY);
+        if (!storedInvitations) {
+          toast({
+            title: "Invalid invitation code",
+            description: "The invitation code you entered is not valid.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const invitations = JSON.parse(storedInvitations);
+        const invitation = invitations.find((inv: any) => 
+          inv.invitation_code === invitationCode && inv.status === 'pending'
+        );
+
+        if (!invitation) {
+          toast({
+            title: "Invalid or used invitation code",
+            description: "The invitation code you entered is not valid or has already been used.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Check if invitation is expired
+        if (new Date() > new Date(invitation.expires_at)) {
+          toast({
+            title: "Invitation expired",
+            description: "This invitation code has expired.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Create consistent user ID
+        const userId = `user-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Create new user
+        const newUser = {
+          id: userId,
+          name: name,
+          email: email,
+          role: invitation.role,
+          created_at: new Date().toISOString(),
+        };
+
+        // Update invitation status
+        const updatedInvitations = invitations.map((inv: any) =>
+          inv.id === invitation.id
+            ? { ...inv, status: 'used', used_by: userId, used_at: new Date().toISOString() }
+            : inv
+        );
+        localStorage.setItem(INVITATIONS_KEY, JSON.stringify(updatedInvitations));
+
+        // Create user assignment
+        const assignment = {
+          id: `assignment-${Math.random().toString(36).substr(2, 9)}`,
+          user_id: userId,
+          admin_id: invitation.admin_id,
+          project_name: invitation.project_name,
+          assigned_at: new Date().toISOString(),
+          name: name,
+          email: email,
+          role: invitation.role,
+          status: 'active'
+        };
+
+        // Store assignment
+        const existingAssignments = localStorage.getItem(USER_ASSIGNMENTS_KEY);
+        const assignments = existingAssignments ? JSON.parse(existingAssignments) : [];
+        assignments.push(assignment);
+        localStorage.setItem(USER_ASSIGNMENTS_KEY, JSON.stringify(assignments));
+
+        // Set current user
+        localStorage.setItem('current_user', JSON.stringify(newUser));
+        localStorage.setItem('dev_user_role', invitation.role);
+
+        console.log('Created user:', newUser);
+        console.log('Created assignment:', assignment);
+
+        toast({
+          title: "Account created successfully",
+          description: `Welcome ${name}! You've been assigned as a ${invitation.role}.`,
+        });
+
+        navigate('/dashboard');
       }
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Auth error:', error);
       toast({
         title: "Authentication failed",
-        description: error.message,
+        description: "There was an error during authentication.",
         variant: "destructive",
       });
     } finally {
@@ -191,23 +167,36 @@ const Auth = ({ isLogin }: AuthProps) => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center font-playfair text-2xl">
+          <CardTitle className="font-playfair text-2xl text-center">
             {isLogin ? 'Sign In' : 'Create Account'}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
-              <div>
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
+              <>
+                <div>
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="invitationCode">Invitation Code</Label>
+                  <Input
+                    id="invitationCode"
+                    type="text"
+                    value={invitationCode}
+                    onChange={(e) => setInvitationCode(e.target.value)}
+                    placeholder="Enter your invitation code"
+                    required
+                  />
+                </div>
+              </>
             )}
             
             <div>
@@ -232,23 +221,11 @@ const Auth = ({ isLogin }: AuthProps) => {
               />
             </div>
 
-            {!isLogin && (
-              <div>
-                <Label htmlFor="invitationCode">Invitation Code (Optional)</Label>
-                <Input
-                  id="invitationCode"
-                  type="text"
-                  value={invitationCode}
-                  onChange={(e) => setInvitationCode(e.target.value)}
-                  placeholder="Enter invitation code if you have one"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Leave empty to create a manager account
-                </p>
-              </div>
-            )}
-            
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading}
+            >
               {isLoading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
             </Button>
           </form>

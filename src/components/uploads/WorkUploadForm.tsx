@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Upload, Camera, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -72,10 +73,10 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
     try {
       const currentUser = getCurrentUser();
       
-      // Create work upload record
+      // Create work upload record with consistent user ID
       const workUpload = {
         id: `work-${Math.random().toString(36).substr(2, 9)}`,
-        worker_id: currentUser.id,
+        worker_id: currentUser.id, // Use the actual user ID from localStorage
         hours_worked: parseFloat(formData.hours_worked),
         work_date: formData.work_date,
         description: formData.description,
@@ -94,6 +95,7 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
       localStorage.setItem(WORK_UPLOADS_KEY, JSON.stringify(uploads));
 
       console.log('Work upload saved:', workUpload);
+      console.log('Current user ID:', currentUser.id);
 
       // Simulate upload delay
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -120,6 +122,34 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = `${position.coords.latitude},${position.coords.longitude}`;
+          setGpsCoords(coords);
+          toast({
+            title: "Location captured",
+            description: "GPS coordinates recorded for verification.",
+          });
+        },
+        (error) => {
+          toast({
+            title: "Location error",
+            description: "Could not get current location.",
+            variant: "destructive",
+          });
+        }
+      );
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
     }
   };
 

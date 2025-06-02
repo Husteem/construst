@@ -56,16 +56,23 @@ const VerificationDashboard = () => {
   const getTeamMembers = () => {
     const managerId = getCurrentManagerId();
     const assignments = localStorage.getItem(USER_ASSIGNMENTS_KEY);
+    console.log('Manager ID:', managerId);
+    console.log('All assignments:', assignments);
+    
     if (!assignments) return [];
     
     const allAssignments = JSON.parse(assignments);
-    return allAssignments.filter((assignment: any) => assignment.admin_id === managerId);
+    const managerAssignments = allAssignments.filter((assignment: any) => assignment.admin_id === managerId);
+    console.log('Manager assignments:', managerAssignments);
+    
+    return managerAssignments;
   };
 
   const fetchUploads = async () => {
     try {
       const teamMembers = getTeamMembers();
       const teamMemberIds = teamMembers.map((member: any) => member.user_id);
+      console.log('Team member IDs:', teamMemberIds);
 
       // Get work uploads from team members
       const storedWorkUploads = localStorage.getItem(WORK_UPLOADS_KEY);
@@ -73,28 +80,14 @@ const VerificationDashboard = () => {
       
       if (storedWorkUploads) {
         const allWorkUploads = JSON.parse(storedWorkUploads);
-        workData = allWorkUploads.filter((upload: WorkUpload) => 
-          teamMemberIds.includes(upload.worker_id)
-        );
-      } else {
-        // Create sample data if team members exist
-        if (teamMembers.length > 0) {
-          workData = teamMembers
-            .filter((member: any) => member.role === 'worker')
-            .map((worker: any, index: number) => ({
-              id: `work-${index + 1}`,
-              worker_id: worker.user_id,
-              work_date: new Date().toISOString().split('T')[0],
-              hours_worked: 8,
-              description: `Daily construction work completed by ${worker.name}`,
-              status: 'pending' as const,
-              created_at: new Date().toISOString(),
-              gps_coordinates: '6.5244,3.3792',
-              user_name: worker.name,
-              user_role: worker.role,
-            }));
-          localStorage.setItem(WORK_UPLOADS_KEY, JSON.stringify(workData));
-        }
+        console.log('All work uploads:', allWorkUploads);
+        
+        workData = allWorkUploads.filter((upload: WorkUpload) => {
+          const isMatch = teamMemberIds.includes(upload.worker_id);
+          console.log(`Work upload ${upload.id}: worker_id=${upload.worker_id}, isMatch=${isMatch}`);
+          return isMatch;
+        });
+        console.log('Filtered work uploads:', workData);
       }
 
       // Get material uploads from team members
@@ -103,29 +96,14 @@ const VerificationDashboard = () => {
       
       if (storedMaterialUploads) {
         const allMaterialUploads = JSON.parse(storedMaterialUploads);
-        materialData = allMaterialUploads.filter((upload: MaterialUpload) => 
-          teamMemberIds.includes(upload.supplier_id)
-        );
-      } else {
-        // Create sample data if team members exist
-        if (teamMembers.length > 0) {
-          materialData = teamMembers
-            .filter((member: any) => member.role === 'supplier')
-            .map((supplier: any, index: number) => ({
-              id: `material-${index + 1}`,
-              supplier_id: supplier.user_id,
-              material_type: 'Cement bags',
-              quantity: 50,
-              delivery_date: new Date().toISOString().split('T')[0],
-              description: `Material delivery by ${supplier.name}`,
-              status: 'pending' as const,
-              created_at: new Date().toISOString(),
-              gps_coordinates: '6.5244,3.3792',
-              user_name: supplier.name,
-              user_role: supplier.role,
-            }));
-          localStorage.setItem(MATERIAL_UPLOADS_KEY, JSON.stringify(materialData));
-        }
+        console.log('All material uploads:', allMaterialUploads);
+        
+        materialData = allMaterialUploads.filter((upload: MaterialUpload) => {
+          const isMatch = teamMemberIds.includes(upload.supplier_id);
+          console.log(`Material upload ${upload.id}: supplier_id=${upload.supplier_id}, isMatch=${isMatch}`);
+          return isMatch;
+        });
+        console.log('Filtered material uploads:', materialData);
       }
 
       setWorkUploads(workData);
@@ -310,6 +288,9 @@ const VerificationDashboard = () => {
           <div className="mt-4">
             <p className="text-sm text-gray-600">
               Team members: {teamMembers.map((member: any) => member.name).join(', ')}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Debug: Manager ID: {getCurrentManagerId()}, Team member IDs: {teamMembers.map((member: any) => member.user_id).join(', ')}
             </p>
           </div>
         )}
