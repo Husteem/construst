@@ -28,14 +28,21 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
 
   const getCurrentUser = () => {
     const currentUser = localStorage.getItem('current_user');
+    console.log('💼 WORK UPLOAD - Raw current_user from localStorage:', currentUser);
+    
     if (currentUser) {
-      return JSON.parse(currentUser);
+      const user = JSON.parse(currentUser);
+      console.log('💼 WORK UPLOAD - Parsed current user:', user);
+      return user;
     }
-    return {
+    
+    const fallbackUser = {
       id: userId,
       name: 'Development Worker',
       role: 'worker'
     };
+    console.log('💼 WORK UPLOAD - Using fallback user:', fallbackUser);
+    return fallbackUser;
   };
 
   const getCurrentLocation = () => {
@@ -72,6 +79,7 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
 
     try {
       const currentUser = getCurrentUser();
+      console.log('💼 WORK UPLOAD - Starting upload process for user:', currentUser);
       
       // Create work upload record with consistent user ID
       const workUpload = {
@@ -88,14 +96,18 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
         user_role: currentUser.role,
       };
 
+      console.log('💼 WORK UPLOAD - Created work upload record:', workUpload);
+
       // Store in localStorage
       const existingUploads = localStorage.getItem(WORK_UPLOADS_KEY);
+      console.log('💼 WORK UPLOAD - Existing uploads in localStorage:', existingUploads);
+      
       const uploads = existingUploads ? JSON.parse(existingUploads) : [];
       uploads.push(workUpload);
       localStorage.setItem(WORK_UPLOADS_KEY, JSON.stringify(uploads));
 
-      console.log('Work upload saved:', workUpload);
-      console.log('Current user ID:', currentUser.id);
+      console.log('💼 WORK UPLOAD - All uploads after adding new one:', uploads);
+      console.log('💼 WORK UPLOAD - Work upload saved successfully');
 
       // Simulate upload delay
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -114,7 +126,7 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
       setGpsCoords('');
       onUploadComplete();
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('❌ WORK UPLOAD - Upload error:', error);
       toast({
         title: "Upload failed",
         description: "There was an error uploading your work record.",

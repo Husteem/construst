@@ -29,14 +29,21 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
 
   const getCurrentUser = () => {
     const currentUser = localStorage.getItem('current_user');
+    console.log('📦 MATERIAL UPLOAD - Raw current_user from localStorage:', currentUser);
+    
     if (currentUser) {
-      return JSON.parse(currentUser);
+      const user = JSON.parse(currentUser);
+      console.log('📦 MATERIAL UPLOAD - Parsed current user:', user);
+      return user;
     }
-    return {
+    
+    const fallbackUser = {
       id: userId,
       name: 'Development Supplier',
       role: 'supplier'
     };
+    console.log('📦 MATERIAL UPLOAD - Using fallback user:', fallbackUser);
+    return fallbackUser;
   };
 
   const getCurrentLocation = () => {
@@ -73,6 +80,7 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
 
     try {
       const currentUser = getCurrentUser();
+      console.log('📦 MATERIAL UPLOAD - Starting upload process for user:', currentUser);
       
       // Create material upload record with consistent user ID
       const materialUpload = {
@@ -90,14 +98,18 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
         user_role: currentUser.role,
       };
 
+      console.log('📦 MATERIAL UPLOAD - Created material upload record:', materialUpload);
+
       // Store in localStorage
       const existingUploads = localStorage.getItem(MATERIAL_UPLOADS_KEY);
+      console.log('📦 MATERIAL UPLOAD - Existing uploads in localStorage:', existingUploads);
+      
       const uploads = existingUploads ? JSON.parse(existingUploads) : [];
       uploads.push(materialUpload);
       localStorage.setItem(MATERIAL_UPLOADS_KEY, JSON.stringify(uploads));
 
-      console.log('Material upload saved:', materialUpload);
-      console.log('Current user ID:', currentUser.id);
+      console.log('📦 MATERIAL UPLOAD - All uploads after adding new one:', uploads);
+      console.log('📦 MATERIAL UPLOAD - Material upload saved successfully');
 
       // Simulate upload delay
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -117,7 +129,7 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
       setGpsCoords('');
       onUploadComplete();
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('❌ MATERIAL UPLOAD - Upload error:', error);
       toast({
         title: "Upload failed",
         description: "There was an error uploading your material record.",

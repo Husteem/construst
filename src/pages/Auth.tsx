@@ -29,6 +29,8 @@ const Auth = ({ isLogin }: AuthProps) => {
 
     try {
       if (isLogin) {
+        console.log('🔐 LOGIN PROCESS STARTED');
+        
         // Handle login
         await new Promise(resolve => setTimeout(resolve, 1000));
         
@@ -43,6 +45,9 @@ const Auth = ({ isLogin }: AuthProps) => {
 
         localStorage.setItem('current_user', JSON.stringify(mockUser));
         localStorage.setItem('dev_user_role', 'manager');
+        
+        console.log('🔐 MANAGER LOGIN - Created user:', mockUser);
+        console.log('🔐 MANAGER LOGIN - User ID:', mockUser.id);
 
         toast({
           title: "Signed in successfully",
@@ -51,6 +56,9 @@ const Auth = ({ isLogin }: AuthProps) => {
 
         navigate('/dashboard');
       } else {
+        console.log('📝 SIGNUP PROCESS STARTED');
+        console.log('📝 SIGNUP - Invitation code entered:', invitationCode);
+        
         // Handle signup with invitation
         if (!invitationCode) {
           toast({
@@ -63,6 +71,8 @@ const Auth = ({ isLogin }: AuthProps) => {
 
         // Get invitations from localStorage
         const storedInvitations = localStorage.getItem(INVITATIONS_KEY);
+        console.log('📝 SIGNUP - All stored invitations:', storedInvitations);
+        
         if (!storedInvitations) {
           toast({
             title: "Invalid invitation code",
@@ -73,9 +83,13 @@ const Auth = ({ isLogin }: AuthProps) => {
         }
 
         const invitations = JSON.parse(storedInvitations);
+        console.log('📝 SIGNUP - Parsed invitations:', invitations);
+        
         const invitation = invitations.find((inv: any) => 
           inv.invitation_code === invitationCode && inv.status === 'pending'
         );
+        
+        console.log('📝 SIGNUP - Found matching invitation:', invitation);
 
         if (!invitation) {
           toast({
@@ -100,6 +114,8 @@ const Auth = ({ isLogin }: AuthProps) => {
 
         // Create consistent user ID
         const userId = `user-${Math.random().toString(36).substr(2, 9)}`;
+        console.log('📝 SIGNUP - Generated user ID:', userId);
+        console.log('📝 SIGNUP - Admin ID from invitation:', invitation.admin_id);
         
         // Create new user
         const newUser = {
@@ -109,6 +125,8 @@ const Auth = ({ isLogin }: AuthProps) => {
           role: invitation.role,
           created_at: new Date().toISOString(),
         };
+        
+        console.log('📝 SIGNUP - Created new user:', newUser);
 
         // Update invitation status
         const updatedInvitations = invitations.map((inv: any) =>
@@ -117,6 +135,7 @@ const Auth = ({ isLogin }: AuthProps) => {
             : inv
         );
         localStorage.setItem(INVITATIONS_KEY, JSON.stringify(updatedInvitations));
+        console.log('📝 SIGNUP - Updated invitations (marked as used):', updatedInvitations);
 
         // Create user assignment
         const assignment = {
@@ -131,18 +150,21 @@ const Auth = ({ isLogin }: AuthProps) => {
           status: 'active'
         };
 
+        console.log('📝 SIGNUP - Created assignment:', assignment);
+
         // Store assignment
         const existingAssignments = localStorage.getItem(USER_ASSIGNMENTS_KEY);
         const assignments = existingAssignments ? JSON.parse(existingAssignments) : [];
         assignments.push(assignment);
         localStorage.setItem(USER_ASSIGNMENTS_KEY, JSON.stringify(assignments));
+        
+        console.log('📝 SIGNUP - All assignments after adding new one:', assignments);
 
         // Set current user
         localStorage.setItem('current_user', JSON.stringify(newUser));
         localStorage.setItem('dev_user_role', invitation.role);
 
-        console.log('Created user:', newUser);
-        console.log('Created assignment:', assignment);
+        console.log('📝 SIGNUP - Set current user in localStorage:', newUser);
 
         toast({
           title: "Account created successfully",
@@ -152,7 +174,7 @@ const Auth = ({ isLogin }: AuthProps) => {
         navigate('/dashboard');
       }
     } catch (error) {
-      console.error('Auth error:', error);
+      console.error('❌ Auth error:', error);
       toast({
         title: "Authentication failed",
         description: "There was an error during authentication.",

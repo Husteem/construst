@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -47,24 +46,37 @@ const VerificationDashboard = () => {
 
   const getCurrentManagerId = () => {
     const currentUser = localStorage.getItem('current_user');
+    console.log('✅ VERIFICATION - Raw current_user from localStorage:', currentUser);
+    
     if (currentUser) {
       const user = JSON.parse(currentUser);
+      console.log('✅ VERIFICATION - Parsed current user:', user);
+      console.log('✅ VERIFICATION - Manager ID:', user.id);
       return user.id;
     }
+    console.log('✅ VERIFICATION - No current user found, using default manager ID');
     return 'manager-default';
   };
 
   const getTeamMembers = () => {
     const managerId = getCurrentManagerId();
     const assignments = localStorage.getItem(USER_ASSIGNMENTS_KEY);
-    console.log('Manager ID:', managerId);
-    console.log('All assignments:', assignments);
+    console.log('✅ VERIFICATION - Manager ID:', managerId);
+    console.log('✅ VERIFICATION - Raw assignments from localStorage:', assignments);
     
-    if (!assignments) return [];
+    if (!assignments) {
+      console.log('✅ VERIFICATION - No assignments found');
+      return [];
+    }
     
     const allAssignments = JSON.parse(assignments);
-    const managerAssignments = allAssignments.filter((assignment: any) => assignment.admin_id === managerId);
-    console.log('Manager assignments:', managerAssignments);
+    console.log('✅ VERIFICATION - All parsed assignments:', allAssignments);
+    
+    const managerAssignments = allAssignments.filter((assignment: any) => {
+      console.log(`✅ VERIFICATION - Checking assignment ${assignment.id}: admin_id=${assignment.admin_id}, managerId=${managerId}, match=${assignment.admin_id === managerId}`);
+      return assignment.admin_id === managerId;
+    });
+    console.log('✅ VERIFICATION - Manager assignments found:', managerAssignments);
     
     return managerAssignments;
   };
@@ -73,44 +85,54 @@ const VerificationDashboard = () => {
     try {
       const teamMembers = getTeamMembers();
       const teamMemberIds = teamMembers.map((member: any) => member.user_id);
-      console.log('Team member IDs:', teamMemberIds);
+      console.log('✅ VERIFICATION - Team member IDs to filter by:', teamMemberIds);
 
       // Get work uploads from team members
       const storedWorkUploads = localStorage.getItem(WORK_UPLOADS_KEY);
+      console.log('✅ VERIFICATION - Raw work uploads from localStorage:', storedWorkUploads);
+      
       let workData: WorkUpload[] = [];
       
       if (storedWorkUploads) {
         const allWorkUploads = JSON.parse(storedWorkUploads);
-        console.log('All work uploads:', allWorkUploads);
+        console.log('✅ VERIFICATION - All parsed work uploads:', allWorkUploads);
         
         workData = allWorkUploads.filter((upload: WorkUpload) => {
           const isMatch = teamMemberIds.includes(upload.worker_id);
-          console.log(`Work upload ${upload.id}: worker_id=${upload.worker_id}, isMatch=${isMatch}`);
+          console.log(`✅ VERIFICATION - Work upload ${upload.id}: worker_id=${upload.worker_id}, isMatch=${isMatch}`);
           return isMatch;
         });
-        console.log('Filtered work uploads:', workData);
+        console.log('✅ VERIFICATION - Filtered work uploads for this manager:', workData);
+      } else {
+        console.log('✅ VERIFICATION - No work uploads found in localStorage');
       }
 
       // Get material uploads from team members
       const storedMaterialUploads = localStorage.getItem(MATERIAL_UPLOADS_KEY);
+      console.log('✅ VERIFICATION - Raw material uploads from localStorage:', storedMaterialUploads);
+      
       let materialData: MaterialUpload[] = [];
       
       if (storedMaterialUploads) {
         const allMaterialUploads = JSON.parse(storedMaterialUploads);
-        console.log('All material uploads:', allMaterialUploads);
+        console.log('✅ VERIFICATION - All parsed material uploads:', allMaterialUploads);
         
         materialData = allMaterialUploads.filter((upload: MaterialUpload) => {
           const isMatch = teamMemberIds.includes(upload.supplier_id);
-          console.log(`Material upload ${upload.id}: supplier_id=${upload.supplier_id}, isMatch=${isMatch}`);
+          console.log(`✅ VERIFICATION - Material upload ${upload.id}: supplier_id=${upload.supplier_id}, isMatch=${isMatch}`);
           return isMatch;
         });
-        console.log('Filtered material uploads:', materialData);
+        console.log('✅ VERIFICATION - Filtered material uploads for this manager:', materialData);
+      } else {
+        console.log('✅ VERIFICATION - No material uploads found in localStorage');
       }
 
       setWorkUploads(workData);
       setMaterialUploads(materialData);
+      
+      console.log('✅ VERIFICATION - Final state - Work uploads:', workData.length, 'Material uploads:', materialData.length);
     } catch (error) {
-      console.error('Error fetching uploads:', error);
+      console.error('❌ VERIFICATION - Error fetching uploads:', error);
     } finally {
       setIsLoading(false);
     }

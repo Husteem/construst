@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,32 +33,37 @@ const UserManagement = () => {
 
   const getCurrentManagerId = () => {
     const currentUser = localStorage.getItem('current_user');
+    console.log('👥 USER MANAGEMENT - Raw current_user from localStorage:', currentUser);
+    
     if (currentUser) {
       const user = JSON.parse(currentUser);
+      console.log('👥 USER MANAGEMENT - Parsed current user:', user);
+      console.log('👥 USER MANAGEMENT - Manager ID:', user.id);
       return user.id;
     }
+    console.log('👥 USER MANAGEMENT - No current user found, using default manager ID');
     return 'manager-default';
   };
 
   const fetchAssignedUsers = async () => {
     try {
       const managerId = getCurrentManagerId();
-      console.log('Current manager ID:', managerId);
+      console.log('👥 USER MANAGEMENT - Current manager ID:', managerId);
       
       const storedAssignments = localStorage.getItem(USER_ASSIGNMENTS_KEY);
-      console.log('Stored assignments:', storedAssignments);
+      console.log('👥 USER MANAGEMENT - Raw stored assignments:', storedAssignments);
       
       if (storedAssignments) {
         const allAssignments = JSON.parse(storedAssignments);
-        console.log('All assignments:', allAssignments);
+        console.log('👥 USER MANAGEMENT - All parsed assignments:', allAssignments);
         
         // Filter assignments for current manager
         const managerAssignments = allAssignments.filter((assignment: AssignedUser) => {
-          console.log(`Checking assignment ${assignment.id}: admin_id=${assignment.admin_id}, managerId=${managerId}`);
+          console.log(`👥 USER MANAGEMENT - Checking assignment ${assignment.id}: admin_id=${assignment.admin_id}, managerId=${managerId}, match=${assignment.admin_id === managerId}`);
           return assignment.admin_id === managerId;
         });
         
-        console.log('Manager assignments:', managerAssignments);
+        console.log('👥 USER MANAGEMENT - Manager assignments found:', managerAssignments);
         
         setAssignedUsers(managerAssignments);
         setStats({
@@ -67,9 +71,14 @@ const UserManagement = () => {
           activeWorkers: managerAssignments.filter((u: AssignedUser) => u.role === 'worker').length,
           activeSuppliers: managerAssignments.filter((u: AssignedUser) => u.role === 'supplier').length,
         });
+        
+        console.log('👥 USER MANAGEMENT - Final stats:', {
+          totalUsers: managerAssignments.length,
+          activeWorkers: managerAssignments.filter((u: AssignedUser) => u.role === 'worker').length,
+          activeSuppliers: managerAssignments.filter((u: AssignedUser) => u.role === 'supplier').length,
+        });
       } else {
-        // No assignments found
-        console.log('No assignments found in localStorage');
+        console.log('👥 USER MANAGEMENT - No assignments found in localStorage');
         setAssignedUsers([]);
         setStats({
           totalUsers: 0,
@@ -78,7 +87,7 @@ const UserManagement = () => {
         });
       }
     } catch (error: any) {
-      console.error('Error fetching assigned users:', error);
+      console.error('❌ USER MANAGEMENT - Error fetching assigned users:', error);
       setAssignedUsers([]);
       setStats({
         totalUsers: 0,
