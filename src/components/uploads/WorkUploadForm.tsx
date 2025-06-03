@@ -7,13 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface WorkUploadFormProps {
   userId: string;
   onUploadComplete: () => void;
 }
-
-const WORK_UPLOADS_KEY = 'contrust_dev_work_uploads';
 
 const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
   const [formData, setFormData] = useState({
@@ -79,38 +78,54 @@ const WorkUploadForm = ({ userId, onUploadComplete }: WorkUploadFormProps) => {
 
     try {
       const currentUser = getCurrentUser();
-      console.log('💼 WORK UPLOAD - Starting upload process for user:', currentUser);
-      
-      // Create work upload record with consistent user ID
+      console.log('💼 WORK UPLOAD - Starting database upload for user:', currentUser);
+
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('💼 WORK UPLOAD - Supabase auth user:', user);
+
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to upload work progress.",
+          variant: "destructive",
+        });
+        setIsUploading(false);
+        return;
+      }
+
+      // Create work upload record for database
       const workUpload = {
-        id: `work-${Math.random().toString(36).substr(2, 9)}`,
-        worker_id: currentUser.id, // Use the actual user ID from localStorage
+        worker_id: user.id, // Use authenticated user's ID
         hours_worked: parseFloat(formData.hours_worked),
         work_date: formData.work_date,
         description: formData.description,
         photo_url: selectedFile ? `uploads/${selectedFile.name}` : undefined,
         gps_coordinates: gpsCoords,
         status: 'pending',
-        created_at: new Date().toISOString(),
         user_name: currentUser.name,
         user_role: currentUser.role,
       };
 
-      console.log('💼 WORK UPLOAD - Created work upload record:', workUpload);
+      console.log('💼 WORK UPLOAD - Inserting work upload to database:', workUpload);
 
-      // Store in localStorage
-      const existingUploads = localStorage.getItem(WORK_UPLOADS_KEY);
-      console.log('💼 WORK UPLOAD - Existing uploads in localStorage:', existingUploads);
-      
-      const uploads = existingUploads ? JSON.parse(existingUploads) : [];
-      uploads.push(workUpload);
-      localStorage.setItem(WORK_UPLOADS_KEY, JSON.stringify(uploads));
+      // Insert into Supabase database
+      const { data, error } = await supabase
+        .from('work_uploads')
+        .insert([workUpload])
+        .select();
 
-      console.log('💼 WORK UPLOAD - All uploads after adding new one:', uploads);
-      console.log('💼 WORK UPLOAD - Work upload saved successfully');
+      if (error) {
+        console.error('❌ WORK UPLOAD - Database error:', error);
+        toast({
+          title: "Upload failed",
+          description: `Database error: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Simulate upload delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('💼 WORK UPLOAD - Successfully saved to database:', data);
 
       toast({
         title: "Work progress uploaded!",

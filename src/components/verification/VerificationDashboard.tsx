@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Upload {
   id: string;
@@ -31,8 +33,6 @@ interface MaterialUpload extends Upload {
 }
 
 const USER_ASSIGNMENTS_KEY = 'contrust_dev_user_assignments';
-const WORK_UPLOADS_KEY = 'contrust_dev_work_uploads';
-const MATERIAL_UPLOADS_KEY = 'contrust_dev_material_uploads';
 
 const VerificationDashboard = () => {
   const [workUploads, setWorkUploads] = useState<WorkUpload[]>([]);
@@ -83,56 +83,71 @@ const VerificationDashboard = () => {
 
   const fetchUploads = async () => {
     try {
+      console.log('✅ VERIFICATION - Starting to fetch uploads from database');
+
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('✅ VERIFICATION - Supabase auth user:', user);
+
+      if (!user) {
+        console.log('✅ VERIFICATION - No authenticated user found');
+        setIsLoading(false);
+        return;
+      }
+
       const teamMembers = getTeamMembers();
       const teamMemberIds = teamMembers.map((member: any) => member.user_id);
       console.log('✅ VERIFICATION - Team member IDs to filter by:', teamMemberIds);
 
-      // Get work uploads from team members
-      const storedWorkUploads = localStorage.getItem(WORK_UPLOADS_KEY);
-      console.log('✅ VERIFICATION - Raw work uploads from localStorage:', storedWorkUploads);
-      
-      let workData: WorkUpload[] = [];
-      
-      if (storedWorkUploads) {
-        const allWorkUploads = JSON.parse(storedWorkUploads);
-        console.log('✅ VERIFICATION - All parsed work uploads:', allWorkUploads);
+      // Fetch work uploads from database
+      console.log('✅ VERIFICATION - Fetching work uploads from database...');
+      const { data: workData, error: workError } = await supabase
+        .from('work_uploads')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (workError) {
+        console.error('❌ VERIFICATION - Work uploads fetch error:', workError);
+      } else {
+        console.log('✅ VERIFICATION - All work uploads from database:', workData);
         
-        workData = allWorkUploads.filter((upload: WorkUpload) => {
+        // Filter work uploads for this manager's team
+        const filteredWorkUploads = workData?.filter((upload: WorkUpload) => {
           const isMatch = teamMemberIds.includes(upload.worker_id);
           console.log(`✅ VERIFICATION - Work upload ${upload.id}: worker_id=${upload.worker_id}, isMatch=${isMatch}`);
           return isMatch;
-        });
-        console.log('✅ VERIFICATION - Filtered work uploads for this manager:', workData);
-      } else {
-        console.log('✅ VERIFICATION - No work uploads found in localStorage');
+        }) || [];
+        
+        console.log('✅ VERIFICATION - Filtered work uploads for this manager:', filteredWorkUploads);
+        setWorkUploads(filteredWorkUploads);
       }
 
-      // Get material uploads from team members
-      const storedMaterialUploads = localStorage.getItem(MATERIAL_UPLOADS_KEY);
-      console.log('✅ VERIFICATION - Raw material uploads from localStorage:', storedMaterialUploads);
-      
-      let materialData: MaterialUpload[] = [];
-      
-      if (storedMaterialUploads) {
-        const allMaterialUploads = JSON.parse(storedMaterialUploads);
-        console.log('✅ VERIFICATION - All parsed material uploads:', allMaterialUploads);
+      // Fetch material uploads from database
+      console.log('✅ VERIFICATION - Fetching material uploads from database...');
+      const { data: materialData, error: materialError } = await supabase
+        .from('material_uploads')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (materialError) {
+        console.error('❌ VERIFICATION - Material uploads fetch error:', materialError);
+      } else {
+        console.log('✅ VERIFICATION - All material uploads from database:', materialData);
         
-        materialData = allMaterialUploads.filter((upload: MaterialUpload) => {
+        // Filter material uploads for this manager's team
+        const filteredMaterialUploads = materialData?.filter((upload: MaterialUpload) => {
           const isMatch = teamMemberIds.includes(upload.supplier_id);
           console.log(`✅ VERIFICATION - Material upload ${upload.id}: supplier_id=${upload.supplier_id}, isMatch=${isMatch}`);
           return isMatch;
-        });
-        console.log('✅ VERIFICATION - Filtered material uploads for this manager:', materialData);
-      } else {
-        console.log('✅ VERIFICATION - No material uploads found in localStorage');
+        }) || [];
+        
+        console.log('✅ VERIFICATION - Filtered material uploads for this manager:', filteredMaterialUploads);
+        setMaterialUploads(filteredMaterialUploads);
       }
 
-      setWorkUploads(workData);
-      setMaterialUploads(materialData);
-      
-      console.log('✅ VERIFICATION - Final state - Work uploads:', workData.length, 'Material uploads:', materialData.length);
+      console.log('✅ VERIFICATION - Final state - Work uploads:', workUploads.length, 'Material uploads:', materialUploads.length);
     } catch (error) {
-      console.error('❌ VERIFICATION - Error fetching uploads:', error);
+      console.error('❌ VERIFICATION - Error fetching uploads from database:', error);
     } finally {
       setIsLoading(false);
     }
@@ -140,33 +155,36 @@ const VerificationDashboard = () => {
 
   const updateStatus = async (type: 'work' | 'material', id: string, status: 'verified' | 'rejected') => {
     try {
-      const storageKey = type === 'work' ? WORK_UPLOADS_KEY : MATERIAL_UPLOADS_KEY;
-      const currentData = localStorage.getItem(storageKey);
+      console.log(`✅ VERIFICATION - Updating ${type} upload ${id} status to ${status}`);
+
+      const table = type === 'work' ? 'work_uploads' : 'material_uploads';
       
-      if (!currentData) return;
+      const { error } = await supabase
+        .from(table)
+        .update({ status })
+        .eq('id', id);
 
-      const uploads = JSON.parse(currentData);
-      const updatedUploads = uploads.map((upload: any) => 
-        upload.id === id ? { ...upload, status } : upload
-      );
-
-      localStorage.setItem(storageKey, JSON.stringify(updatedUploads));
-
-      if (type === 'work') {
-        setWorkUploads(updatedUploads.filter((upload: WorkUpload) => 
-          getTeamMembers().map((member: any) => member.user_id).includes(upload.worker_id)
-        ));
-      } else {
-        setMaterialUploads(updatedUploads.filter((upload: MaterialUpload) => 
-          getTeamMembers().map((member: any) => member.user_id).includes(upload.supplier_id)
-        ));
+      if (error) {
+        console.error(`❌ VERIFICATION - Error updating ${type} upload status:`, error);
+        toast({
+          title: "Error updating status",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
       }
+
+      console.log(`✅ VERIFICATION - Successfully updated ${type} upload ${id} status to ${status}`);
+
+      // Refresh the uploads after updating
+      await fetchUploads();
 
       toast({
         title: `Upload ${status}`,
         description: `The upload has been ${status}.`,
       });
     } catch (error: any) {
+      console.error(`❌ VERIFICATION - Error updating ${type} upload status:`, error);
       toast({
         title: "Error updating status",
         description: error.message,

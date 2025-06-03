@@ -54,6 +54,51 @@ export type Database = {
         }
         Relationships: []
       }
+      material_uploads: {
+        Row: {
+          created_at: string
+          delivery_date: string
+          description: string | null
+          gps_coordinates: string | null
+          id: string
+          material_type: string
+          photo_url: string | null
+          quantity: number
+          status: string
+          supplier_id: string
+          user_name: string | null
+          user_role: string | null
+        }
+        Insert: {
+          created_at?: string
+          delivery_date: string
+          description?: string | null
+          gps_coordinates?: string | null
+          id?: string
+          material_type: string
+          photo_url?: string | null
+          quantity: number
+          status?: string
+          supplier_id: string
+          user_name?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          created_at?: string
+          delivery_date?: string
+          description?: string | null
+          gps_coordinates?: string | null
+          id?: string
+          material_type?: string
+          photo_url?: string | null
+          quantity?: number
+          status?: string
+          supplier_id?: string
+          user_name?: string | null
+          user_role?: string | null
+        }
+        Relationships: []
+      }
       user_assignments: {
         Row: {
           admin_id: string
@@ -75,6 +120,48 @@ export type Database = {
           id?: string
           project_name?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      work_uploads: {
+        Row: {
+          created_at: string
+          description: string
+          gps_coordinates: string | null
+          hours_worked: number
+          id: string
+          photo_url: string | null
+          status: string
+          user_name: string | null
+          user_role: string | null
+          work_date: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          gps_coordinates?: string | null
+          hours_worked: number
+          id?: string
+          photo_url?: string | null
+          status?: string
+          user_name?: string | null
+          user_role?: string | null
+          work_date: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          gps_coordinates?: string | null
+          hours_worked?: number
+          id?: string
+          photo_url?: string | null
+          status?: string
+          user_name?: string | null
+          user_role?: string | null
+          work_date?: string
+          worker_id?: string
         }
         Relationships: []
       }

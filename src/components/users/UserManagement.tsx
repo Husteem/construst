@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Users, UserCheck, Package } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AssignedUser {
   id: string;
@@ -49,6 +51,10 @@ const UserManagement = () => {
     try {
       const managerId = getCurrentManagerId();
       console.log('👥 USER MANAGEMENT - Current manager ID:', managerId);
+
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('👥 USER MANAGEMENT - Supabase auth user:', user);
       
       const storedAssignments = localStorage.getItem(USER_ASSIGNMENTS_KEY);
       console.log('👥 USER MANAGEMENT - Raw stored assignments:', storedAssignments);

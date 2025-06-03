@@ -7,13 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MaterialUploadFormProps {
   userId: string;
   onUploadComplete: () => void;
 }
-
-const MATERIAL_UPLOADS_KEY = 'contrust_dev_material_uploads';
 
 const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProps) => {
   const [formData, setFormData] = useState({
@@ -80,12 +79,25 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
 
     try {
       const currentUser = getCurrentUser();
-      console.log('📦 MATERIAL UPLOAD - Starting upload process for user:', currentUser);
-      
-      // Create material upload record with consistent user ID
+      console.log('📦 MATERIAL UPLOAD - Starting database upload for user:', currentUser);
+
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('📦 MATERIAL UPLOAD - Supabase auth user:', user);
+
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to upload material delivery.",
+          variant: "destructive",
+        });
+        setIsUploading(false);
+        return;
+      }
+
+      // Create material upload record for database
       const materialUpload = {
-        id: `material-${Math.random().toString(36).substr(2, 9)}`,
-        supplier_id: currentUser.id, // Use the actual user ID from localStorage
+        supplier_id: user.id, // Use authenticated user's ID
         material_type: formData.material_type,
         quantity: parseFloat(formData.quantity),
         delivery_date: formData.delivery_date,
@@ -93,26 +105,29 @@ const MaterialUploadForm = ({ userId, onUploadComplete }: MaterialUploadFormProp
         photo_url: selectedFile ? `uploads/${selectedFile.name}` : undefined,
         gps_coordinates: gpsCoords,
         status: 'pending',
-        created_at: new Date().toISOString(),
         user_name: currentUser.name,
         user_role: currentUser.role,
       };
 
-      console.log('📦 MATERIAL UPLOAD - Created material upload record:', materialUpload);
+      console.log('📦 MATERIAL UPLOAD - Inserting material upload to database:', materialUpload);
 
-      // Store in localStorage
-      const existingUploads = localStorage.getItem(MATERIAL_UPLOADS_KEY);
-      console.log('📦 MATERIAL UPLOAD - Existing uploads in localStorage:', existingUploads);
-      
-      const uploads = existingUploads ? JSON.parse(existingUploads) : [];
-      uploads.push(materialUpload);
-      localStorage.setItem(MATERIAL_UPLOADS_KEY, JSON.stringify(uploads));
+      // Insert into Supabase database
+      const { data, error } = await supabase
+        .from('material_uploads')
+        .insert([materialUpload])
+        .select();
 
-      console.log('📦 MATERIAL UPLOAD - All uploads after adding new one:', uploads);
-      console.log('📦 MATERIAL UPLOAD - Material upload saved successfully');
+      if (error) {
+        console.error('❌ MATERIAL UPLOAD - Database error:', error);
+        toast({
+          title: "Upload failed",
+          description: `Database error: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Simulate upload delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('📦 MATERIAL UPLOAD - Successfully saved to database:', data);
 
       toast({
         title: "Material uploaded successfully!",
