@@ -8,35 +8,41 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-interface Upload {
+// Use database table types directly
+type WorkUploadDB = {
   id: string;
-  created_at: string;
-  status: 'pending' | 'verified' | 'rejected';
-  photo_url?: string;
-  description: string;
-  gps_coordinates?: string;
-  user_name?: string;
-  user_role?: string;
-}
-
-interface WorkUpload extends Upload {
   worker_id: string;
-  work_date: string;
   hours_worked: number;
-}
+  work_date: string;
+  description: string;
+  photo_url: string | null;
+  gps_coordinates: string | null;
+  status: string;
+  created_at: string;
+  user_name: string | null;
+  user_role: string | null;
+};
 
-interface MaterialUpload extends Upload {
+type MaterialUploadDB = {
+  id: string;
   supplier_id: string;
   material_type: string;
   quantity: number;
   delivery_date: string;
-}
+  description: string | null;
+  photo_url: string | null;
+  gps_coordinates: string | null;
+  status: string;
+  created_at: string;
+  user_name: string | null;
+  user_role: string | null;
+};
 
 const USER_ASSIGNMENTS_KEY = 'contrust_dev_user_assignments';
 
 const VerificationDashboard = () => {
-  const [workUploads, setWorkUploads] = useState<WorkUpload[]>([]);
-  const [materialUploads, setMaterialUploads] = useState<MaterialUpload[]>([]);
+  const [workUploads, setWorkUploads] = useState<WorkUploadDB[]>([]);
+  const [materialUploads, setMaterialUploads] = useState<MaterialUploadDB[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -112,7 +118,7 @@ const VerificationDashboard = () => {
         console.log('✅ VERIFICATION - All work uploads from database:', workData);
         
         // Filter work uploads for this manager's team
-        const filteredWorkUploads = workData?.filter((upload: WorkUpload) => {
+        const filteredWorkUploads = workData?.filter((upload: WorkUploadDB) => {
           const isMatch = teamMemberIds.includes(upload.worker_id);
           console.log(`✅ VERIFICATION - Work upload ${upload.id}: worker_id=${upload.worker_id}, isMatch=${isMatch}`);
           return isMatch;
@@ -135,7 +141,7 @@ const VerificationDashboard = () => {
         console.log('✅ VERIFICATION - All material uploads from database:', materialData);
         
         // Filter material uploads for this manager's team
-        const filteredMaterialUploads = materialData?.filter((upload: MaterialUpload) => {
+        const filteredMaterialUploads = materialData?.filter((upload: MaterialUploadDB) => {
           const isMatch = teamMemberIds.includes(upload.supplier_id);
           console.log(`✅ VERIFICATION - Material upload ${upload.id}: supplier_id=${upload.supplier_id}, isMatch=${isMatch}`);
           return isMatch;
@@ -206,7 +212,7 @@ const VerificationDashboard = () => {
     }
   };
 
-  const WorkUploadCard = ({ upload }: { upload: WorkUpload }) => (
+  const WorkUploadCard = ({ upload }: { upload: WorkUploadDB }) => (
     <Card className="mb-4">
       <CardContent className="p-4">
         <div className="flex justify-between items-start mb-3">
@@ -253,7 +259,7 @@ const VerificationDashboard = () => {
     </Card>
   );
 
-  const MaterialUploadCard = ({ upload }: { upload: MaterialUpload }) => (
+  const MaterialUploadCard = ({ upload }: { upload: MaterialUploadDB }) => (
     <Card className="mb-4">
       <CardContent className="p-4">
         <div className="flex justify-between items-start mb-3">
