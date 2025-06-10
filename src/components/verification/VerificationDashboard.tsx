@@ -128,14 +128,14 @@ const VerificationDashboard = () => {
         console.log('✅ VERIFICATION - All work uploads from database:', workData);
         
         // Filter work uploads for this manager's team
-        const filteredWorkUploads = workData?.filter((upload: WorkUploadDB) => {
+        const filteredWorkData = workData?.filter((upload: WorkUploadDB) => {
           const isMatch = teamMemberIds.includes(upload.worker_id);
           console.log(`✅ VERIFICATION - Work upload ${upload.id}: worker_id=${upload.worker_id}, isMatch=${isMatch}`);
           return isMatch;
         }) || [];
         
-        console.log('✅ VERIFICATION - Filtered work uploads for this manager:', filteredWorkUploads);
-        setWorkUploads(filteredWorkUploads);
+        console.log('✅ VERIFICATION - Filtered work uploads for this manager:', filteredWorkData);
+        setWorkUploads(filteredWorkData);
       }
 
       // Fetch material uploads from database
@@ -151,17 +151,17 @@ const VerificationDashboard = () => {
         console.log('✅ VERIFICATION - All material uploads from database:', materialData);
         
         // Filter material uploads for this manager's team
-        const filteredMaterialUploads = materialData?.filter((upload: MaterialUploadDB) => {
+        const filteredMaterialData = materialData?.filter((upload: MaterialUploadDB) => {
           const isMatch = teamMemberIds.includes(upload.supplier_id);
           console.log(`✅ VERIFICATION - Material upload ${upload.id}: supplier_id=${upload.supplier_id}, isMatch=${isMatch}`);
           return isMatch;
         }) || [];
         
-        console.log('✅ VERIFICATION - Filtered material uploads for this manager:', filteredMaterialUploads);
-        setMaterialUploads(filteredMaterialUploads);
+        console.log('✅ VERIFICATION - Filtered material uploads for this manager:', filteredMaterialData);
+        setMaterialUploads(filteredMaterialData);
       }
 
-      console.log('✅ VERIFICATION - Final state - Work uploads:', filteredWorkUploads?.length || 0, 'Material uploads:', filteredMaterialUploads?.length || 0);
+      console.log('✅ VERIFICATION - Final state - Work uploads:', workUploads.length, 'Material uploads:', materialUploads.length);
     } catch (error) {
       console.error('❌ VERIFICATION - Error fetching uploads from database:', error);
     } finally {
