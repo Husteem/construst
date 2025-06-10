@@ -38,11 +38,18 @@ type MaterialUploadDB = {
   user_role: string | null;
 };
 
-const USER_ASSIGNMENTS_KEY = 'contrust_dev_user_assignments';
+type UserAssignment = {
+  id: string;
+  admin_id: string;
+  user_id: string;
+  project_name: string | null;
+  assigned_at: string;
+};
 
 const VerificationDashboard = () => {
   const [workUploads, setWorkUploads] = useState<WorkUploadDB[]>([]);
   const [materialUploads, setMaterialUploads] = useState<MaterialUploadDB[]>([]);
+  const [teamAssignments, setTeamAssignments] = useState<UserAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -64,27 +71,27 @@ const VerificationDashboard = () => {
     return 'manager-default';
   };
 
-  const getTeamMembers = () => {
-    const managerId = getCurrentManagerId();
-    const assignments = localStorage.getItem(USER_ASSIGNMENTS_KEY);
-    console.log('✅ VERIFICATION - Manager ID:', managerId);
-    console.log('✅ VERIFICATION - Raw assignments from localStorage:', assignments);
-    
-    if (!assignments) {
-      console.log('✅ VERIFICATION - No assignments found');
+  const fetchTeamAssignments = async (managerId: string) => {
+    try {
+      console.log('✅ VERIFICATION - Fetching team assignments from database for manager:', managerId);
+      
+      const { data: assignments, error } = await supabase
+        .from('user_assignments')
+        .select('*')
+        .eq('admin_id', managerId);
+
+      if (error) {
+        console.error('❌ VERIFICATION - Error fetching team assignments:', error);
+        return [];
+      }
+
+      console.log('✅ VERIFICATION - Team assignments found in database:', assignments);
+      setTeamAssignments(assignments || []);
+      return assignments || [];
+    } catch (error) {
+      console.error('❌ VERIFICATION - Error fetching team assignments:', error);
       return [];
     }
-    
-    const allAssignments = JSON.parse(assignments);
-    console.log('✅ VERIFICATION - All parsed assignments:', allAssignments);
-    
-    const managerAssignments = allAssignments.filter((assignment: any) => {
-      console.log(`✅ VERIFICATION - Checking assignment ${assignment.id}: admin_id=${assignment.admin_id}, managerId=${managerId}, match=${assignment.admin_id === managerId}`);
-      return assignment.admin_id === managerId;
-    });
-    console.log('✅ VERIFICATION - Manager assignments found:', managerAssignments);
-    
-    return managerAssignments;
   };
 
   const fetchUploads = async () => {
@@ -101,8 +108,11 @@ const VerificationDashboard = () => {
         return;
       }
 
-      const teamMembers = getTeamMembers();
-      const teamMemberIds = teamMembers.map((member: any) => member.user_id);
+      const managerId = getCurrentManagerId();
+      
+      // Fetch team assignments from database
+      const teamAssignments = await fetchTeamAssignments(managerId);
+      const teamMemberIds = teamAssignments.map((assignment: UserAssignment) => assignment.user_id);
       console.log('✅ VERIFICATION - Team member IDs to filter by:', teamMemberIds);
 
       // Fetch work uploads from database
@@ -151,7 +161,7 @@ const VerificationDashboard = () => {
         setMaterialUploads(filteredMaterialUploads);
       }
 
-      console.log('✅ VERIFICATION - Final state - Work uploads:', workUploads.length, 'Material uploads:', materialUploads.length);
+      console.log('✅ VERIFICATION - Final state - Work uploads:', filteredWorkUploads?.length || 0, 'Material uploads:', filteredMaterialUploads?.length || 0);
     } catch (error) {
       console.error('❌ VERIFICATION - Error fetching uploads from database:', error);
     } finally {
@@ -315,8 +325,6 @@ const VerificationDashboard = () => {
     );
   }
 
-  const teamMembers = getTeamMembers();
-
   return (
     <div className="space-y-6">
       <div>
@@ -324,20 +332,20 @@ const VerificationDashboard = () => {
           Verification Dashboard
         </h2>
         <p className="text-gray-600">Review and approve work progress and material deliveries from your team</p>
-        {teamMembers.length === 0 && (
+        {teamAssignments.length === 0 && (
           <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
-              No team members found. Create invitations to add workers and suppliers to see their uploads here.
+              No team members found in database. Create invitations and have team members accept them to see their uploads here.
             </p>
           </div>
         )}
-        {teamMembers.length > 0 && (
+        {teamAssignments.length > 0 && (
           <div className="mt-4">
             <p className="text-sm text-gray-600">
-              Team members: {teamMembers.map((member: any) => member.name).join(', ')}
+              Team members assigned: {teamAssignments.length}
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              Debug: Manager ID: {getCurrentManagerId()}, Team member IDs: {teamMembers.map((member: any) => member.user_id).join(', ')}
+              Debug: Manager ID: {getCurrentManagerId()}, Team member IDs: {teamAssignments.map((assignment) => assignment.user_id).join(', ')}
             </p>
           </div>
         )}
@@ -359,7 +367,7 @@ const VerificationDashboard = () => {
               <CardContent className="p-8 text-center">
                 <p className="text-gray-500">No work uploads from your team</p>
                 <p className="text-sm text-gray-400 mt-2">
-                  Work uploads from your invited workers will appear here
+                  Work uploads from your assigned team members will appear here
                 </p>
               </CardContent>
             </Card>
@@ -376,7 +384,7 @@ const VerificationDashboard = () => {
               <CardContent className="p-8 text-center">
                 <p className="text-gray-500">No material uploads from your team</p>
                 <p className="text-sm text-gray-400 mt-2">
-                  Material deliveries from your invited suppliers will appear here
+                  Material deliveries from your assigned team members will appear here
                 </p>
               </CardContent>
             </Card>
